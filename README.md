@@ -1,6 +1,6 @@
-# raknet
+# go-raknet
 
-raknet is Raknet library for Medaka written in Go.
+go-raknet is Raknet library for Medaka written in Go.
 
 The almost codes are based on [JRaknet](https://github.com/JRakNet/JRakNet) (by [JRaknet-Team](https://github.com/JRakNet) and [Whirvis](https://github.com/Whirvis)).
 
