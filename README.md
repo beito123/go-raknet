@@ -36,6 +36,6 @@ These codes are under the MIT License.
 
 Thank you very much!
 
-- [Raknet](https://github.com/facebookarchive/RakNet) : The original engine written in C++
-- [JRaknet](https://github.com/JRakNet/JRakNet) : Raknet library by non-official written in Java
+- [Raknet](https://github.com/facebookarchive/RakNet) (by [Oculus VR](https://github.com/OculusVR/) License: [2-clause BSD License](https://opensource.org/licenses/BSD-2-Clause)) : The original engine written in C++
+- [JRaknet](https://github.com/JRakNet/JRakNet) (by [JRaknet-Team](https://github.com/JRakNet) and [Whirvis](https://github.com/Whirvis) License: [MIT License](https://opensource.org/licenses/mit-license.php)) : Raknet library by non-official written in Java
 - And you
