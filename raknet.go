@@ -1,10 +1,5 @@
 package raknet
 
-import (
-	"net"
-	"strconv"
-)
-
 /*
  * go-raknet
  *
@@ -14,6 +9,11 @@ import (
  * http://opensource.org/licenses/mit-license.php
  */
 
+import (
+	"net"
+	"strconv"
+)
+
 const (
 
 	// Version is version of go-raknet library
@@ -22,6 +22,24 @@ const (
 	// ProtocolVersion is version of Raknet protocol
 	ProtocolVersion = 8
 )
+
+var Magic = []byte{0x00, 0xff, 0xff, 0x00, 0xfe, 0xfe, 0xfe, 0xfe, 0xfd, 0xfd, 0xfd, 0xfd, 0x12, 0x34, 0x56, 0x78}
+
+// Packet is basic packet interface
+type Packet interface {
+	ID() byte
+	Encode() error
+	Decode() error
+	New() Packet
+}
+
+// Protocol is packet protocol interface
+type Protocol interface {
+	RegisterPackets()
+	Packet(id byte) Packet
+	Packets() []Packet
+}
+
 
 // SystemAddress is internal address for Raknet
 type SystemAddress struct {
