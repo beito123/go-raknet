@@ -13,7 +13,9 @@ import (
 	"github.com/beito123/binary"
 	"strconv"
 	"strings"
-	"github.com/beito123/raklib"
+	"github.com/beito123/go-raknet"
+	"github.com/satori/go.uuid"
+	"errors"
 )
 
 // RaknetStream is binary stream for Raknet
@@ -128,7 +130,7 @@ func (bs *RaknetStream) PutAddress(addr string, port uint16, version byte) error
 }
 
 // AddressSystemAddress sets address got from Buffer to SystemAddress
-func (bs *RaknetStream) AddressSystemAddress(addr *raklib.SystemAddress) error {
+func (bs *RaknetStream) AddressSystemAddress(addr *raknet.SystemAddress) error {
 	var add string
 	var port uint16
 
@@ -137,7 +139,7 @@ func (bs *RaknetStream) AddressSystemAddress(addr *raklib.SystemAddress) error {
 		return err
 	}
 
-	naddr := raklib.NewSystemAddress(add, port)
+	naddr := raknet.NewSystemAddress(add, port)
 
 	*addr = *naddr
 
@@ -145,6 +147,120 @@ func (bs *RaknetStream) AddressSystemAddress(addr *raklib.SystemAddress) error {
 }
 
 // PutAddressSystemAddress puts address from UDPAddr to Buffer
-func (bs *RaknetStream) PutAddressSystemAddress(addr raklib.SystemAddress) error {
+func (bs *RaknetStream) PutAddressSystemAddress(addr raknet.SystemAddress) error {
 	return bs.PutAddress(addr.IP.String(), addr.Port, byte(addr.Version()))
+}
+
+func (bs *RaknetStream) UUID(uid *uuid.UUID) error {
+	u, err := uuid.FromBytes(bs.Get(16))
+	if err != nil {
+		return err
+	}
+
+	*uid = u
+
+	return nil
+}
+
+func (bs *RaknetStream) PutUUID(uid uuid.UUID) error {
+	return bs.Put(uid.Bytes())
+}
+
+func (bs *RaknetStream) ConnectionType(typ *raknet.ConnectionType) error {
+	var ntyp raknet.ConnectionType
+
+	err := bs.UUID(&ntyp.UUID)
+	if err != nil {
+		return err
+	}
+
+	err = bs.String(&ntyp.Name)
+	if err != nil {
+		return err
+	}
+
+	err = bs.String(&ntyp.Lang)
+	if err != nil {
+		return err
+	}
+
+	err = bs.String(&ntyp.Version)
+	if err != nil {
+		return err
+	}
+
+	var metaLen byte
+	err = bs.Byte(&metaLen)
+	if err != nil {
+		return err
+	}
+
+	ntyp.Metadata = raknet.Metadata{}
+
+	var key, value string
+	for i := byte(0); i < metaLen; i++ {
+		err = bs.String(&key)
+		if err != nil {
+			return err
+		}
+
+		err = bs.String(&value)
+		if err != nil {
+			return err
+		}
+
+		_, ok := ntyp.Metadata[key]
+		if ok { // if exists already
+			return errors.New("duplicate key")
+		}
+
+		ntyp.Metadata[key] = value
+	}
+
+	return nil
+}
+
+func (bs *RaknetStream) PutConnectionType(typ raknet.ConnectionType) error {
+	err := bs.PutUUID(typ.UUID)
+	if err != nil {
+		return err
+	}
+
+	err = bs.PutString(typ.Name)
+	if err != nil {
+		return err
+	}
+
+	err = bs.PutString(typ.Lang)
+	if err != nil {
+		return err
+	}
+
+	err = bs.PutString(typ.Version)
+	if err != nil {
+		return err
+	}
+
+	if len(typ.Metadata) > raknet.MaxMetadataValues {
+		return errors.New("too many metadata values")
+	}
+
+	err = bs.PutByte(byte(len(typ.Metadata)))
+	if err != nil {
+		return err
+	}
+
+	for k, v := range typ.Metadata {
+		err = bs.PutString(k)
+		if err != nil {
+			return err
+		}
+
+		err = bs.PutString(v)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

@@ -20,6 +20,7 @@ const (
 )
 
 // Triad is 3bytes data for Raknet
+// Using index counter in Raknet
 type Triad uint32
 
 // ReadTriad read Triad value
