@@ -9,11 +9,6 @@ package raknet
  * http://opensource.org/licenses/mit-license.php
  */
 
-import (
-	"net"
-	"strconv"
-)
-
 const (
 
 	// Version is version of go-raknet library
@@ -24,79 +19,3 @@ const (
 )
 
 var Magic = []byte{0x00, 0xff, 0xff, 0x00, 0xfe, 0xfe, 0xfe, 0xfe, 0xfd, 0xfd, 0xfd, 0xfd, 0x12, 0x34, 0x56, 0x78}
-
-// Packet is basic packet interface
-type Packet interface {
-	ID() byte
-	Encode() error
-	Decode() error
-	New() Packet
-}
-
-// Protocol is packet protocol interface
-type Protocol interface {
-	RegisterPackets()
-	Packet(id byte) Packet
-	Packets() []Packet
-}
-
-
-// SystemAddress is internal address for Raknet
-type SystemAddress struct {
-	IP   net.IP
-	Port uint16
-}
-
-// SetLoopback sets loopback address
-func (addr *SystemAddress) SetLoopback() {
-	if len(addr.IP) == net.IPv4len {
-		addr.IP = net.ParseIP("127.0.0.1")
-	} else {
-		addr.IP = net.IPv6loopback // "::1"
-	}
-}
-
-// IsLoopback returns whether this is loopback address
-func (addr *SystemAddress) IsLoopback() bool {
-	return addr.IP.IsLoopback()
-}
-
-// Version returns the ip address version (4 or 6)
-func (addr *SystemAddress) Version() int {
-	if len(addr.IP) == net.IPv6len {
-		return 6
-	}
-
-	return 4
-}
-
-// Equal returns whether sub is the same address
-func (addr *SystemAddress) Equal(sub *SystemAddress) bool {
-	return addr.IP.Equal(sub.IP) && addr.Port == sub.Port
-}
-
-// String returns as string
-// Format: 192.168.11.1:8080, [fc00::]:8080
-func (addr *SystemAddress) String() string {
-	if len(addr.IP) == net.IPv6len {
-		return "[" + addr.IP.String() + "]:" + strconv.Itoa(int(addr.Port))
-	}
-
-	return addr.IP.String() + ":" + strconv.Itoa(int(addr.Port))
-}
-
-// NewSystemAddress returns a new SystemAddress from string
-func NewSystemAddress(addr string, port uint16) *SystemAddress {
-	return &SystemAddress{
-		IP:   net.ParseIP(addr),
-		Port: port,
-	}
-}
-
-// NewSystemAddress returns a new SystemAddress from bytes
-func NewSystemAddressBytes(addr []byte, port uint16) *SystemAddress {
-	return &SystemAddress{
-		IP:   net.IP(addr).To16(),
-		Port: port,
-	}
-}

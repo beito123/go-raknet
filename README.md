@@ -36,6 +36,12 @@ These codes are licensed under the MIT License.
 
 Thank you very much!
 
+## Based on
+
 - [Raknet](https://github.com/facebookarchive/RakNet) (by [Oculus VR](https://github.com/OculusVR/) License: [2-clause BSD License](https://opensource.org/licenses/BSD-2-Clause)) : The original engine written in C++
 - [JRaknet](https://github.com/JRakNet/JRakNet) (by [JRaknet-Team](https://github.com/JRakNet) and [Whirvis](https://github.com/Whirvis) License: [MIT License](https://opensource.org/licenses/mit-license.php)) : Raknet library by non-official written in Java
 - And you
+
+## Library
+
+- [go.uuid](https://github.com/satori/go.uuid) (by [satori](https://github.com/satori/go.uuid) License: [MIT License](https://opensource.org/licenses/mit-license.php)) : UUID
