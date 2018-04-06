@@ -8,7 +8,7 @@ This project is not related to Jenkins Software LLC and Oculus.
 
 ## License
 
-These codes are under the MIT License.
+These codes are licensed under the MIT License.
 
     MIT License
 
