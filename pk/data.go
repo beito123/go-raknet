@@ -9,7 +9,6 @@ package pk
  * http://opensource.org/licenses/mit-license.php
  */
 
-
 // Ref: http://www.jenkinssoftware.com/raknet/manual/Doxygen/PacketPriority_8h.html#e41fa01235e99dced384d137fa874a7e
 
 // Reliability decides reliable and ordered of packet when sending
@@ -17,7 +16,7 @@ type Reliability int
 
 const (
 	// Unreliable is normal UDP packet.
-	Unreliable                    Reliability = iota
+	Unreliable Reliability = iota
 
 	// UnreliableSequenced is the same as Unreliable. but it has Sequenced.
 	UnreliableSequenced
@@ -91,4 +90,3 @@ func ReliabilityBinary(b byte) Reliability {
 
 	return Unreliable
 }
-
