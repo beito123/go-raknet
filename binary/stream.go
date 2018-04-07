@@ -151,6 +151,7 @@ func (bs *RaknetStream) PutAddressSystemAddress(addr raknet.SystemAddress) error
 	return bs.PutAddress(addr.IP.String(), addr.Port, byte(addr.Version()))
 }
 
+// UUID reads UUID
 func (bs *RaknetStream) UUID(uid *uuid.UUID) error {
 	u, err := uuid.FromBytes(bs.Get(16))
 	if err != nil {
@@ -162,10 +163,12 @@ func (bs *RaknetStream) UUID(uid *uuid.UUID) error {
 	return nil
 }
 
+// PutUUID writes UUID
 func (bs *RaknetStream) PutUUID(uid uuid.UUID) error {
 	return bs.Put(uid.Bytes())
 }
 
+// ConnectionType reads ConnectionType
 func (bs *RaknetStream) ConnectionType(typ *raknet.ConnectionType) error {
 	var ntyp raknet.ConnectionType
 
@@ -220,6 +223,7 @@ func (bs *RaknetStream) ConnectionType(typ *raknet.ConnectionType) error {
 	return nil
 }
 
+// PutConnectionType writes ConnectionType
 func (bs *RaknetStream) PutConnectionType(typ raknet.ConnectionType) error {
 	err := bs.PutUUID(typ.UUID)
 	if err != nil {
