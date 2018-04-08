@@ -10,10 +10,10 @@ package pk
  */
 
 import (
-	"github.com/beito123/go-raknet/binary"
-	"github.com/beito123/go-raknet"
 	"bytes"
 	"errors"
+	"github.com/beito123/go-raknet"
+	"github.com/beito123/go-raknet/binary"
 )
 
 type BasePacket struct {

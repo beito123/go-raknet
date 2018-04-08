@@ -8,7 +8,7 @@ import (
 
 /*
 	RaknetProtocol Interface
- */
+*/
 
 // Packet is basic packet interface
 type Packet interface {
@@ -27,7 +27,7 @@ type Protocol interface {
 
 /*
 	ConnectionType
- */
+*/
 
 const MaxMetadataValues = 0xff
 
@@ -39,31 +39,31 @@ var ConnctionTypeMagic = []byte{0x03, 0x08, 0x05, 0x0b, 0x43, 0x54, 0x49}
 
 // Vanilla is a connection from a vanilla client or an unknown implementation
 var ConnectionVanilla = ConnectionType{
-	Name: "Vanilla",
+	Name:      "Vanilla",
 	IsVanilla: true,
 }
 
 // GoRaknet is a go-raknet connection.
 var ConnectionGoRaknet = ConnectionType{
-	UUID: uuid.FromStringOrNil("495248b9-d485-4389-acd0-175fdb2233cf"),
-	Name: "GoRaknet",
-	Lang: "Go",
+	UUID:    uuid.FromStringOrNil("495248b9-d485-4389-acd0-175fdb2233cf"),
+	Name:    "GoRaknet",
+	Lang:    "Go",
 	Version: "2.9.2",
 }
 
 // ConnectionType is connection info struct
 type ConnectionType struct {
-	UUID uuid.UUID
-	Name string
-	Lang string
-	Version string
-	Metadata Metadata
+	UUID      uuid.UUID
+	Name      string
+	Lang      string
+	Version   string
+	Metadata  Metadata
 	IsVanilla bool
 }
 
 // Identifier represents an identifier sent from a server on the local network
 type Identifier struct {
-	Identifier string
+	Identifier     string
 	ConnectionType ConnectionType
 }
 
@@ -73,7 +73,7 @@ func (id *Identifier) Build() string {
 
 /*
 	SystemAddress
- */
+*/
 
 // NewSystemAddress returns a new SystemAddress from string
 func NewSystemAddress(addr string, port uint16) *SystemAddress {
