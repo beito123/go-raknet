@@ -10,12 +10,12 @@ package binary
  */
 
 import (
+	"errors"
 	"github.com/beito123/binary"
-	"strconv"
-	"strings"
 	"github.com/beito123/go-raknet"
 	"github.com/satori/go.uuid"
-	"errors"
+	"strconv"
+	"strings"
 )
 
 // RaknetStream is binary stream for Raknet

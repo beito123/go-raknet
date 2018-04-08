@@ -9,7 +9,6 @@ package pk
  * http://opensource.org/licenses/mit-license.php
  */
 
-
 const (
 	IDConnectedPing                                    = 0x00
 	IDUnconnectedPing                                  = 0x01
