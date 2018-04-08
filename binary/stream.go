@@ -23,6 +23,26 @@ type RaknetStream struct {
 	binary.Stream
 }
 
+// Triad sets triad got from buffer to value
+func (rs *RaknetStream) Triad(value *Triad) error {
+	return Read(rs, BigEndian, value)
+}
+
+// PutTriad puts triad from value to buffer
+func (rs *RaknetStream) PutTriad(value Triad) error {
+	return Write(rs, BigEndian, value)
+}
+
+// LTriad sets triad got from buffer as LittleEndian to value
+func (rs *RaknetStream) LTriad(value *Triad) error {
+	return Read(rs, LittleEndian, value)
+}
+
+// PutLTriad puts triad from value to buffer as LittleEndian
+func (rs *RaknetStream) PutLTriad(value Triad) error {
+	return Write(rs, LittleEndian, value)
+}
+
 // IsMagic returns whether 16bytes is Raknet magic
 func (rs *RaknetStream) IsMagic() bool {
 	return string(rs.Get(len(raknet.Magic))) == string(raknet.Magic) // bad hack? :P// but fast..
@@ -31,26 +51,6 @@ func (rs *RaknetStream) IsMagic() bool {
 // PutMagic write Raknet Magic
 func (rs *RaknetStream) PutMagic() error {
 	return rs.Put(raknet.Magic)
-}
-
-// Triad sets triad got from buffer to value
-func (rs *RaknetStream) Triad(value *Triad) error {
-	return Read(rs.Buffer, BigEndian, value)
-}
-
-// PutTriad puts triad from value to buffer
-func (rs *RaknetStream) PutTriad(value Triad) error {
-	return Write(rs.Buffer, BigEndian, value)
-}
-
-// LTriad sets triad got from buffer as LittleEndian to value
-func (rs *RaknetStream) LTriad(value *Triad) error {
-	return Read(rs.Buffer, LittleEndian, value)
-}
-
-// PutLTriad puts triad from value to buffer as LittleEndian
-func (rs *RaknetStream) PutLTriad(value Triad) error {
-	return Write(rs.Buffer, LittleEndian, value)
 }
 
 // String sets string(len short, str string) got from buffer to value
