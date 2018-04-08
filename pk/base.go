@@ -10,8 +10,6 @@ package pk
  */
 
 import (
-	"bytes"
-	"errors"
 	"github.com/beito123/go-raknet"
 	"github.com/beito123/go-raknet/binary"
 )
@@ -21,10 +19,6 @@ type BasePacket struct {
 }
 
 func (base *BasePacket) Encode(pk raknet.Packet) error {
-	if base.Buffer == nil {
-		base.Buffer = &bytes.Buffer{}
-	}
-
 	err := base.PutByte(pk.ID())
 	if err != nil {
 		return err
@@ -34,10 +28,6 @@ func (base *BasePacket) Encode(pk raknet.Packet) error {
 }
 
 func (base *BasePacket) Decode(pk raknet.Packet) error {
-	if base.Buffer == nil {
-		return errors.New("the buffer isn't set")
-	}
-
 	base.Skip(1) // for id
 
 	return nil
