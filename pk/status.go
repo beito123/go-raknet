@@ -9,7 +9,6 @@ package pk
  * http://opensource.org/licenses/mit-license.php
  */
 
-
 import "github.com/beito123/go-raknet"
 
 type ConnectedPing struct {
@@ -96,11 +95,11 @@ func (pk *ConnectedPong) New() raknet.Packet {
 
 type UnconnectedPing struct {
 	BasePacket
-	Timestamp int64
-	Magic []byte
-	PingID int64
+	Timestamp       int64
+	Magic           bool
+	PingID          int64
 	ConnectionMagic []byte
-	Connection raknet.ConnectionType
+	Connection      raknet.ConnectionType
 }
 
 func (pk UnconnectedPing) ID() byte {
@@ -118,7 +117,7 @@ func (pk *UnconnectedPing) Encode() error {
 		return err
 	}
 
-	err = pk.Put(raknet.Magic)
+	err = pk.PutMagic()
 	if err != nil {
 		return err
 	}
@@ -152,7 +151,7 @@ func (pk *UnconnectedPing) Decode() error {
 		return err
 	}
 
-	pk.Magic = pk.Get(len(raknet.Magic))
+	pk.Magic = pk.IsMagic()
 
 	err = pk.Long(&pk.PingID)
 	if err != nil {
@@ -193,12 +192,12 @@ func (pk *UnconnectedPingOpenConnections) New() raknet.Packet {
 
 type UnconnectedPong struct {
 	BasePacket
-	Timestamp int64
-	PongID int64
-	Magic []byte
-	Identifier raknet.Identifier
+	Timestamp       int64
+	PongID          int64
+	Magic           bool
+	Identifier      raknet.Identifier
 	ConnectionMagic []byte
-	Connection raknet.ConnectionType
+	Connection      raknet.ConnectionType
 }
 
 func (pk UnconnectedPong) ID() byte {
@@ -221,7 +220,7 @@ func (pk *UnconnectedPong) Encode() error {
 		return err
 	}
 
-	err = pk.Put(raknet.Magic)
+	err = pk.PutMagic()
 	if err != nil {
 		return err
 	}
@@ -260,7 +259,7 @@ func (pk *UnconnectedPong) Decode() error {
 		return err
 	}
 
-	pk.Magic = pk.Get(len(raknet.Magic))
+	pk.Magic = pk.IsMagic()
 
 	var identifier string
 
@@ -281,7 +280,7 @@ func (pk *UnconnectedPong) Decode() error {
 	}
 
 	pk.Identifier = raknet.Identifier{
-		Identifier: identifier,
+		Identifier:     identifier,
 		ConnectionType: pk.Connection,
 	}
 
