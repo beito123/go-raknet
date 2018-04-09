@@ -151,7 +151,7 @@ func (pk *UnconnectedPing) Decode() error {
 		return err
 	}
 
-	pk.Magic = pk.IsMagic()
+	pk.Magic = pk.CheckMagic()
 
 	err = pk.Long(&pk.PingID)
 	if err != nil {
@@ -259,7 +259,7 @@ func (pk *UnconnectedPong) Decode() error {
 		return err
 	}
 
-	pk.Magic = pk.IsMagic()
+	pk.Magic = pk.CheckMagic()
 
 	var identifier string
 
