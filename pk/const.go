@@ -161,4 +161,7 @@ const (
 	IDCustomD                                          = 0x8d
 	IDCustomE                                          = 0x8e
 	IDCustomF                                          = 0x8f
+
+	IDACK  = 0xc0
+	IDNACK = 0xa0
 )
