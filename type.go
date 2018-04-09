@@ -134,3 +134,125 @@ func (addr *SystemAddress) String() string {
 
 	return addr.IP.String() + ":" + strconv.Itoa(int(addr.Port))
 }
+
+/*
+	Reliability
+*/
+
+// Reliability decides reliable and ordered of packet when sending
+// Thanks: http://www.jenkinssoftware.com/raknet/manual/Doxygen/PacketPriority_8h.html#e41fa01235e99dced384d137fa874a7e
+type Reliability int
+
+const (
+	// Unreliable is normal UDP packet.
+	Unreliable Reliability = iota
+
+	// UnreliableSequenced is the same as Unreliable. but it has Sequenced.
+	UnreliableSequenced
+
+	Reliable
+	ReliableOrdered
+	ReliableSequenced
+	UnreliableWithACKReceipt
+	ReliableWithACKReceipt
+	ReliableOrderedWithACKReceipt
+)
+
+// IsReliable returns whether reliability has reliable
+func (r Reliability) IsReliable() bool {
+	return (r & 0x04) > 0
+}
+
+// IsOrdered returns whether reliability has ordered
+func (r Reliability) IsOrdered() bool {
+	return (r & 0x02) > 0
+}
+
+// IsSequenced returns whether reliability has sequenced
+func (r Reliability) IsSequenced() bool {
+	return (r & 0x01) > 0
+}
+
+// IsNeededACK returns whether reliability need ack
+func (r Reliability) IsNeededACK() bool {
+	return r == UnreliableWithACKReceipt ||
+		r == ReliableWithACKReceipt ||
+		r == ReliableOrderedWithACKReceipt
+}
+
+// ToBinary encode reliability to bytes
+func (r Reliability) ToBinary() byte {
+	var b byte
+
+	if r.IsReliable() {
+		b |= 1 << 2
+	}
+
+	if r.IsOrdered() {
+		b |= 1 << 1
+	}
+
+	if r.IsSequenced() {
+		b |= 1
+	}
+
+	return b
+}
+
+// ReliabilityBinary returns Reliability from binary
+func ReliabilityBinary(b byte) Reliability {
+	if (b & 0x04) > 0 { // Reliable
+		if (b & 0x02) > 0 { // Ordered
+			return ReliableOrdered
+		} else if (b & 0x01) > 0 { // Sequenced
+			return ReliableSequenced
+		} else {
+			return Reliable
+		}
+	} else { // Unreliable
+		if (b & 0x01) > 0 { // Sequenced
+			return UnreliableSequenced
+		}
+	}
+
+	return Unreliable
+}
+
+/*
+	Records
+*/
+
+// Record is ack numbers container for acknowledge packet
+type Record struct {
+	Index    int
+	EndIndex int
+}
+
+// IsRanged returns whether the record is range
+func (rec *Record) IsRanged() bool {
+	return rec.Index < rec.EndIndex
+}
+
+// Count returns the number of Record
+func (rec *Record) Count() int {
+	if !rec.IsRanged() {
+		return 1
+	}
+
+	return (rec.EndIndex - rec.Index) + 1
+}
+
+// Numbers returns numbers recorded in Record as array
+func (rec *Record) Numbers() []int {
+	count := rec.Count()
+	if count == 1 {
+		return []int{rec.Index}
+	}
+
+	numbers := make([]int, count)
+	for i := 0; i < count; i++ {
+		numbers[i] = rec.Index + i
+	}
+
+	return numbers
+}
