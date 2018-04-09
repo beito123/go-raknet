@@ -43,8 +43,8 @@ func (rs *RaknetStream) PutLTriad(value Triad) error {
 	return Write(rs, LittleEndian, value)
 }
 
-// IsMagic returns whether 16bytes is Raknet magic
-func (rs *RaknetStream) IsMagic() bool {
+// CheckMagic returns whether 16bytes is Raknet magic
+func (rs *RaknetStream) CheckMagic() bool {
 	return string(rs.Get(len(raknet.Magic))) == string(raknet.Magic) // bad hack? :P// but fast..
 }
 
