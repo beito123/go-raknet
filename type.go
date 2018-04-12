@@ -1,9 +1,10 @@
 package raknet
 
 import (
-	"github.com/satori/go.uuid"
 	"net"
 	"strconv"
+
+	"github.com/satori/go.uuid"
 )
 
 /*
@@ -15,6 +16,7 @@ type Packet interface {
 	ID() byte
 	Encode() error
 	Decode() error
+	Bytes() []byte
 	New() Packet
 }
 
