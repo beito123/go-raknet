@@ -11,12 +11,23 @@ package binary
 
 import (
 	"errors"
+	"strconv"
+	"strings"
+
 	"github.com/beito123/binary"
 	"github.com/beito123/go-raknet"
 	"github.com/satori/go.uuid"
-	"strconv"
-	"strings"
 )
+
+func NewStream() *RaknetStream {
+	return NewStreamBytes([]byte{})
+}
+
+func NewStreamBytes(b []byte) *RaknetStream {
+	return &RaknetStream{
+		Stream: *binary.NewStreamBytes(b),
+	}
+}
 
 // RaknetStream is binary stream for Raknet
 type RaknetStream struct {

@@ -13,7 +13,6 @@ import (
 	"io"
 
 	"github.com/beito123/binary"
-	"io"
 )
 
 const (
