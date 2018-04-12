@@ -1,11 +1,5 @@
 package pk
 
-import (
-	"github.com/beito123/go-raknet"
-	"github.com/beito123/go-raknet/binary"
-	"sort"
-)
-
 /*
  * go-raknet
  *
@@ -14,6 +8,12 @@ import (
  * This software is released under the MIT License.
  * http://opensource.org/licenses/mit-license.php
  */
+
+import (
+	"github.com/beito123/go-raknet"
+	"github.com/beito123/go-raknet/binary"
+	"sort"
+)
 
 type ACK struct {
 	Acknowledge
