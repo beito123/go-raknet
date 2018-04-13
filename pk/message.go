@@ -1,10 +1,5 @@
 package pk
 
-import (
-	"github.com/beito123/go-raknet"
-	"github.com/beito123/go-raknet/binary"
-)
-
 /*
  * go-raknet
  *
@@ -14,13 +9,20 @@ import (
  * http://opensource.org/licenses/mit-license.php
  */
 
+import (
+	"errors"
+
+	"github.com/beito123/go-raknet"
+	"github.com/beito123/go-raknet/binary"
+)
+
 const (
-	MinBufferLen                         = 3
-	BitFlagLen                           = 1
-	PayloadLengthLen                     = 2
-	MessageIndexLen                      = 3
-	OrderIndexAndOrderChannelLen         = 4
-	SplitCountAndSplitIDAndSplitIndexLen = 10
+	EPacketMinBufferLen                         = 3
+	EPacketBitFlagLen                           = 1
+	EPacketPayloadLengthLen                     = 2
+	EPacketMessageIndexLen                      = 3
+	EPacketOrderIndexAndOrderChannelLen         = 4
+	EPacketSplitCountAndSplitIDAndSplitIndexLen = 10
 )
 
 const (
@@ -48,6 +50,10 @@ type EncapsulatedPacket struct {
 }
 
 func (epk *EncapsulatedPacket) Encode() error {
+	if epk.Buf == nil {
+		epk.Buf = binary.NewStream()
+	}
+
 	flags := epk.Reliability.ToBinary() << ReliabilityPosition
 	if epk.Split {
 		flags |= FlagSplit
@@ -108,6 +114,10 @@ func (epk *EncapsulatedPacket) Encode() error {
 }
 
 func (epk *EncapsulatedPacket) Decode() error {
+	if epk.Buf == nil {
+		return errors.New("no sets buffer")
+	}
+
 	var flags byte
 
 	err := epk.Buf.Byte(&flags)
@@ -172,22 +182,104 @@ func (epk *EncapsulatedPacket) CalcSize() int {
 
 func CalcEPacketSize(reliability raknet.Reliability, split bool, payload []byte) int {
 	var size int
-	size += BitFlagLen
-	size += PayloadLengthLen
+	size += EPacketBitFlagLen
+	size += EPacketPayloadLengthLen
 
 	if reliability.IsReliable() {
-		size += MessageIndexLen
+		size += EPacketMessageIndexLen
 	}
 
 	if reliability.IsOrdered() || reliability.IsSequenced() {
-		size += OrderIndexAndOrderChannelLen
+		size += EPacketOrderIndexAndOrderChannelLen
 	}
 
 	if split {
-		size += SplitCountAndSplitIDAndSplitIndexLen
+		size += EPacketSplitCountAndSplitIDAndSplitIndexLen
 	}
 
 	size += len(payload)
 
 	return size
+}
+
+func NewCustomPacket(id byte) raknet.Packet {
+	return &CustomPacket{
+		id: id,
+	}
+}
+
+type CustomPacket struct {
+	BasePacket
+
+	id byte
+
+	Index    binary.Triad
+	Messages []*EncapsulatedPacket
+}
+
+func (pk *CustomPacket) ID() byte {
+	return pk.id
+}
+
+func (pk *CustomPacket) Encode() error {
+	err := pk.BasePacket.Encode(pk)
+	if err != nil {
+		return err
+	}
+
+	err = pk.PutLTriad(pk.Index)
+	if err != nil {
+		return err
+	}
+
+	for _, epk := range pk.Messages {
+		epk.Buf = &pk.RaknetStream
+
+		err = epk.Encode()
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (pk *CustomPacket) Decode() error {
+	err := pk.BasePacket.Decode(pk)
+	if err != nil {
+		return err
+	}
+
+	err = pk.LTriad(&pk.Index)
+	if err != nil {
+		return err
+	}
+
+	for pk.Len() >= EPacketMinBufferLen {
+		epk := &EncapsulatedPacket{
+			Buf: &pk.RaknetStream,
+		}
+
+		err = epk.Decode()
+		if err != nil {
+			return err
+		}
+
+		pk.Messages = append(pk.Messages, epk)
+	}
+
+	return nil
+}
+
+func (pk *CustomPacket) CalcSize() int {
+	size := 0
+	for _, epk := range pk.Messages {
+		size += epk.CalcSize()
+	}
+
+	return size
+}
+
+func (pk *CustomPacket) New() raknet.Packet {
+	return NewCustomPacket(pk.id)
 }
