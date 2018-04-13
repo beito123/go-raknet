@@ -1,3 +1,7 @@
 # ignore files and dirs
 
+## For IntelliJ IDEA
 /.idea/
+
+## For vscode
+go-raknet.code-workspace
