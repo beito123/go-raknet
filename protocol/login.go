@@ -1,4 +1,4 @@
-package pk
+package protocol
 
 /*
  * go-raknet
@@ -10,6 +10,26 @@ package pk
  */
 
 import "github.com/beito123/go-raknet"
+
+type DisconnectionNotification struct {
+	BasePacket
+}
+
+func (DisconnectionNotification) ID() byte {
+	return IDDisconnectionNotification
+}
+
+func (pk *DisconnectionNotification) Encode() error {
+	return pk.BasePacket.Encode(pk)
+}
+
+func (pk *DisconnectionNotification) Decode() error {
+	return pk.BasePacket.Decode(pk)
+}
+
+func (pk *DisconnectionNotification) New() raknet.Packet {
+	return new(ConnectionBanned)
+}
 
 type ConnectionBanned struct {
 	BasePacket
