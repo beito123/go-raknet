@@ -8,6 +8,18 @@ import (
 )
 
 /*
+	Logger
+*/
+
+// Logger is a supported logger in Raknet server
+type Logger interface {
+	Info(msg ...interface{})
+	Warn(msg ...interface{})
+	Fatal(msg ...interface{})
+	Debug(msg ...interface{})
+}
+
+/*
 	RaknetProtocol Interface
 */
 
@@ -17,6 +29,7 @@ type Packet interface {
 	Encode() error
 	Decode() error
 	Bytes() []byte
+	SetBytes([]byte)
 	New() Packet
 }
 
@@ -258,3 +271,11 @@ func (rec *Record) Numbers() []int {
 
 	return numbers
 }
+
+type SessionState int
+
+const (
+	StateDisconected SessionState = iota
+	StateHandshaking
+	StateConnected
+)

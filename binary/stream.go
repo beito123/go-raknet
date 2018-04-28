@@ -10,6 +10,7 @@ package binary
  */
 
 import (
+	"bytes"
 	"errors"
 	"strconv"
 	"strings"
@@ -56,7 +57,7 @@ func (rs *RaknetStream) PutLTriad(value Triad) error {
 
 // CheckMagic returns whether 16bytes is Raknet magic
 func (rs *RaknetStream) CheckMagic() bool {
-	return string(rs.Get(len(raknet.Magic))) == string(raknet.Magic) // bad hack? :P// but fast..
+	return bytes.Equal(rs.Get(len(raknet.Magic)), raknet.Magic)
 }
 
 // PutMagic write Raknet Magic
