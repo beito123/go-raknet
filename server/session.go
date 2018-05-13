@@ -10,36 +10,68 @@ package server
  */
 
 import (
+	"context"
+	"errors"
 	"net"
-	"time"
 
 	"github.com/beito123/go-raknet/binary"
 
 	"github.com/beito123/go-raknet/protocol"
 
 	raknet "github.com/beito123/go-raknet"
-	"github.com/satori/go.uuid"
 )
 
 //
+
+var (
+	errSessionClosed = errors.New("session closed")
+)
+
+type SessionState int
+
+const (
+	StateDisconected SessionState = iota
+	StateHandshaking
+	StateConnected
+)
 
 // Session
 type Session struct {
 	Addr   *net.UDPAddr
 	Conn   *net.UDPConn
-	UUID   uuid.UUID
 	Logger raknet.Logger
 	Server *Server
+	GUID   int64
+	MTU    int
 
 	messageIndex binary.Triad
 	splitId      binary.Triad
+
+	ctx   context.Context // TODO: remove
+	state SessionState
 }
 
-func (session *Session) handlePacket(pk raknet.Packet) {
-	//
+func (session *Session) Init() {
+
+}
+
+func (session *Session) State() SessionState {
+	return session.state
+}
+
+func (session *Session) handlePacket(pk raknet.Packet) error {
+	if session.State() == StateDisconected {
+		return errSessionClosed
+	}
+
+	return nil
 }
 
 func (session *Session) handleCustomPacket(pk *protocol.CustomPacket) {
+	//
+}
+
+func (session *Session) handleACKPacket(pk *protocol.ACK) {
 	//
 }
 
@@ -48,17 +80,27 @@ func (session *Session) SendPacket(pk raknet.Packet, rea raknet.Reliability, cha
 }
 
 func (session *Session) SendRawPacket(pk raknet.Packet) {
-	session.Server.SendPacket(session.Addr, pk.Bytes())
+	session.Server.SendPacket(session.Addr, pk)
 }
 
 func (session *Session) update() error {
+	if session.State() == StateDisconected {
+		return errSessionClosed
+	}
+
 	return nil
 }
 
+// Close closes the session
+// Notice!: Don't use this close function for close session
+// Use CloseSession in Server instead of it
 func (session *Session) Close() error {
-	return nil
-}
+	if session.State() == StateDisconected {
+		return errSessionClosed
+	}
 
-func (session *Session) SetDeadline(t time.Time) error {
+	//session.Server.CloseSession(session.UUID, "Disconnected from server")
+	session.state = StateDisconected
+
 	return nil
 }

@@ -11,7 +11,6 @@ package server
 
 import (
 	raknet "github.com/beito123/go-raknet"
-	"github.com/satori/go.uuid"
 )
 
 // Handler handles packets, connections and more from Raknet server
@@ -21,8 +20,8 @@ type Handler interface {
 	OpenConn()
 
 	// HandleRawPacket handles a raw packet no processed in Raknet server
-	HandleRawPacket(uid uuid.UUID, pk raknet.Packet) error
+	HandleRawPacket(uid int64, pk raknet.Packet) error
 
 	// HandlePacket handles a packet processed in Raknet server
-	HandlePacket(uid uuid.UUID, pk raknet.Packet) error
+	HandlePacket(uid int64, pk raknet.Packet) error
 }
