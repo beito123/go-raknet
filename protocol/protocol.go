@@ -27,6 +27,8 @@ func (protocol *Protocol) RegisterPackets() {
 	protocol.packets[IDOpenConnectionReply2] = &OpenConnectionResponseTwo{}
 	protocol.packets[IDConnectionRequest] = &ConnectionRequest{}
 	protocol.packets[IDConnectionRequestAccepted] = &ConnectionRequestAccepted{}
+	protocol.packets[IDAlreadyConnected] = &AlreadyConnected{}
+	protocol.packets[IDNoFreeIncomingConnections] = &NoFreeIncomingConnections{}
 	protocol.packets[IDDisconnectionNotification] = &DisconnectionNotification{}
 	protocol.packets[IDConnectionBanned] = &ConnectionBanned{}
 	protocol.packets[IDIncompatibleProtocolVersion] = &IncompatibleProtocol{}

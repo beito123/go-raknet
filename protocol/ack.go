@@ -10,9 +10,10 @@ package protocol
  */
 
 import (
+	"sort"
+
 	"github.com/beito123/go-raknet"
 	"github.com/beito123/go-raknet/binary"
-	"sort"
 )
 
 type ACK struct {
@@ -36,19 +37,11 @@ func (ACK) New() raknet.Packet {
 }
 
 type NACK struct {
-	Acknowledge
+	ACK
 }
 
 func (NACK) ID() byte {
 	return IDNACK
-}
-
-func (pk *NACK) Encode() error {
-	return pk.Acknowledge.Encode(pk)
-}
-
-func (pk *NACK) Decode() error {
-	return pk.Acknowledge.Decode(pk)
 }
 
 func (NACK) New() raknet.Packet {

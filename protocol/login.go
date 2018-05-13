@@ -11,6 +11,46 @@ package protocol
 
 import "github.com/beito123/go-raknet"
 
+type AlreadyConnected struct {
+	BasePacket
+}
+
+func (AlreadyConnected) ID() byte {
+	return IDAlreadyConnected
+}
+
+func (pk *AlreadyConnected) Encode() error {
+	return pk.BasePacket.Encode(pk)
+}
+
+func (pk *AlreadyConnected) Decode() error {
+	return pk.BasePacket.Decode(pk)
+}
+
+func (pk *AlreadyConnected) New() raknet.Packet {
+	return new(AlreadyConnected)
+}
+
+type NoFreeIncomingConnections struct {
+	BasePacket
+}
+
+func (NoFreeIncomingConnections) ID() byte {
+	return IDNoFreeIncomingConnections
+}
+
+func (pk *NoFreeIncomingConnections) Encode() error {
+	return pk.BasePacket.Encode(pk)
+}
+
+func (pk *NoFreeIncomingConnections) Decode() error {
+	return pk.BasePacket.Decode(pk)
+}
+
+func (pk *NoFreeIncomingConnections) New() raknet.Packet {
+	return new(NoFreeIncomingConnections)
+}
+
 type DisconnectionNotification struct {
 	BasePacket
 }
@@ -28,7 +68,7 @@ func (pk *DisconnectionNotification) Decode() error {
 }
 
 func (pk *DisconnectionNotification) New() raknet.Packet {
-	return new(ConnectionBanned)
+	return new(DisconnectionNotification)
 }
 
 type ConnectionBanned struct {
