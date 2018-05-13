@@ -1,5 +1,7 @@
 package raknet
 
+import "time"
+
 /*
  * go-raknet
  *
@@ -23,7 +25,7 @@ const (
 	// MinMTU is the minimum size of MTU
 	MinMTU = 400
 
-	// MaxChannel is the maximum size of Channel
+	// MaxChannel is the maximum size of order channel
 	MaxChannel = 32
 
 	// DefaultChannel is default channel
@@ -42,3 +44,14 @@ var Magic = []byte{0x00, 0xff, 0xff, 0x00, 0xfe, 0xfe, 0xfe, 0xfe, 0xfd, 0xfd, 0
 
 // MaxPacketsPerSecond is the maximum size that can send per second
 var MaxPacketsPerSecond = 500
+
+var (
+	
+	// SendInterval 
+	SendInterval             time.Duration = 50 * time.Millisecond
+	RecoverySendInterval                   = SendInterval
+	PingSendInterval                       = 2500 * time.Millisecond
+	DetectionSendInterval                  = PingSendInterval * 2
+	SessionTimeout                         = DetectionSendInterval * 5
+	MaxPacketsPerSecondBlock               = 1000 * 300 * time.Millisecond
+)
