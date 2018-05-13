@@ -19,6 +19,7 @@ import (
 
 	raknet "github.com/beito123/go-raknet"
 	"github.com/beito123/go-raknet/protocol"
+	"github.com/orcaman/concurrent-map"
 	"github.com/satori/go.uuid"
 )
 
@@ -37,6 +38,10 @@ var (
 	errInvalidMaxAsyncTaskCount = errors.New("invalid max async task count")
 )
 
+func NewServer(logger raknet.Logger, maxConnections int, MTU int) {
+	//
+}
+
 type Server struct {
 	Logger         raknet.Logger
 	Handlers       []Handler
@@ -54,9 +59,13 @@ type Server struct {
 	conn   *net.UDPConn
 	port   uint16
 	state  ServerState
+	uid    int64
 	pongid int64
 
-	Sessions map[uuid.UUID]*Session
+	sessions         cmap.ConcurrentMap
+	blockedAddresses cmap.ConcurrentMap
+
+	ctx context.Context // ummm...
 }
 
 func (ser *Server) State() ServerState {
@@ -71,7 +80,19 @@ func (ser *Server) IsClosed() bool {
 	return ser.state == StateClosed
 }
 
-func (ser *Server) ListenAndServe(ctx context.Context, addr *net.UDPAddr) error {
+func (ser *Server) init() {
+	ser.sessions = cmap.New()
+	ser.blockedAddresses = cmap.New()
+
+	// register pacekts
+	protocol := new(protocol.Protocol)
+	protocol.RegisterPackets()
+
+	ser.uid = binary.ReadLong(ser.UUID.Bytes()[:8])
+	ser.pongid = binary.ReadLong(ser.UUID.Bytes()[8:16])
+}
+
+func (ser *Server) ListenAndServe(addr *net.UDPAddr) error {
 	if ser.IsRunning() {
 		return errAlreadyRunning
 	}
@@ -81,11 +102,11 @@ func (ser *Server) ListenAndServe(ctx context.Context, addr *net.UDPAddr) error 
 		return err
 	}
 
-	return ser.Serve(ctx, conn)
+	return ser.Serve(conn)
 }
 
 // Serve serves a Raknet server
-func (ser *Server) Serve(ctx context.Context, l *net.UDPConn) error {
+func (ser *Server) Serve(l *net.UDPConn) error {
 	if ser.IsRunning() {
 		return errAlreadyRunning
 	} else if ser.IsClosed() {
@@ -94,15 +115,13 @@ func (ser *Server) Serve(ctx context.Context, l *net.UDPConn) error {
 
 	ser.conn = l
 
-	//init
-	protocol := new(protocol.Protocol)
-	protocol.RegisterPackets()
+	ser.init()
 
-	ser.pongid = binary.ReadLong(ser.UUID.Bytes()[:8])
+	ser.ctx = context.Background()
 
-	// Waits done from context.Context
+	// Waits close command from context.Context
 	go func() {
-		<-ctx.Done()
+		<-ser.ctx.Done()
 
 		err := ser.Close()
 		if err != nil {
@@ -113,17 +132,27 @@ func (ser *Server) Serve(ctx context.Context, l *net.UDPConn) error {
 	// Updates the sessions connected already
 	// in another thread
 	go func() {
-		for ser.IsRunning() {
-			for _, session := range ser.Sessions {
+		for {
+			time.Sleep(1 * time.Nanosecond) // lower cpu usage
+
+			err := ser.RangeSessions(func(key string, session *Session) bool {
 				err := session.update()
 				if err != nil {
-					ser.Logger.Warn(err)
-
-					continue
+					select {
+					case <-ser.ctx.Done():
+						return false
+					default:
+						ser.Logger.Warn(err)
+					}
 				}
-			}
 
-			time.Sleep(1 * time.Nanosecond) // lower cpu usage
+				return true
+			})
+
+			if err != nil {
+				ser.Logger.Warn(err)
+				break
+			}
 		}
 	}()
 
@@ -134,8 +163,9 @@ func (ser *Server) Serve(ctx context.Context, l *net.UDPConn) error {
 		_, addr, err := l.ReadFromUDP(buf)
 		if err != nil {
 			select {
-			case <-ctx.Done():
+			case <-ser.ctx.Done():
 				//Shutting down listener
+				ser.Logger.Info("Shutting down listenner")
 				return nil
 			default:
 				return err
@@ -158,103 +188,320 @@ func (ser *Server) handlePacket(addr *net.UDPAddr, b []byte) {
 		return
 	}
 
-	// is offline message packet
-	if pk.ID() == protocol.IDUnconnectedPing || pk.ID() == protocol.IDUnconnectedPingOpenConnections {
+	var session *Session
+
+	switch npk := pk.(type) {
+	case *protocol.UnconnectedPing, *protocol.UnconnectedPingOpenConnections:
 		if ser.BroadcastingEnabled {
 			return
 		}
 
-		pk, ok := pk.(*protocol.UnconnectedPing)
-		if !ok {
+		ping := npk.(*protocol.UnconnectedPing)
+
+		err = ping.Decode()
+		if err != nil {
+			ser.Logger.Warn(err)
+		}
+
+		if ping.ID() != protocol.IDUnconnectedPing &&
+			(ser.Count() >= ser.MaxConnections || ser.MaxConnections >= 0) {
 			return
 		}
 
-		err := pk.Decode()
-		if err != nil {
-			return // bad packet, ignore
+		if !ping.Magic {
+			return
 		}
 
-		if pk.ID() == protocol.IDUnconnectedPing ||
-			(len(ser.Sessions) < ser.MaxConnections || ser.MaxConnections < 0) {
-			if !pk.Magic {
-				return
-			}
+		pong := &protocol.UnconnectedPong{
+			Timestamp:  ping.Timestamp,
+			PongID:     ser.pongid,
+			Identifier: ser.Identifier,
+		}
 
-			pong := &protocol.UnconnectedPong{
-				Timestamp:  pk.Timestamp,
-				PongID:     ser.pongid,
-				Identifier: ser.Identifier,
-			}
+		err = pong.Encode()
+		if err != nil {
+			ser.Logger.Warn(err)
+			return
+		}
 
-			err := pong.Encode()
+		ser.SendPacket(addr, pong)
+	case *protocol.OpenConnectionRequestOne:
+		err = npk.Decode()
+		if err != nil {
+			ser.Logger.Warn(err)
+		}
+
+		session, ok := ser.GetSession(addr)
+		if ok {
+			if session.State() == StateConnected {
+				ser.CloseSession(session.Addr, "Client re-instantiated connection")
+			}
+		}
+
+		if !npk.Magic {
+			return
+		}
+
+		epk := ser.validateNewConnection(addr)
+		if epk != nil {
+			err = epk.Encode()
 			if err != nil {
 				ser.Logger.Warn(err)
 				return
 			}
 
-			ser.SendPacket(addr, pong.Bytes())
+			ser.SendPacket(addr, epk)
+			return
 		}
-	}
 
-	// create new session
-	session := ser.GetSession(addr)
-	if session == nil {
-		session = ser.newSession(addr)
-	}
+		if npk.ProtocolVersion != raknet.NetworkProtocol {
+			rpk := &protocol.IncompatibleProtocol{}
 
-	for _, hand := range ser.Handlers {
-		hand.HandleRawPacket(session.UUID, pk)
-	}
+			rpk.NetworkProtocol = raknet.NetworkProtocol
+			rpk.ServerGuid = ser.uid
 
-	session.handlePacket(pk)
-}
+			err = rpk.Encode()
+			if err != nil {
+				ser.Logger.Warn(err)
+				return
+			}
 
-func (ser *Server) GetSession(addr *net.UDPAddr) *Session {
-	var session *Session
-	for _, sess := range ser.Sessions {
-		if equalUDPAddr(addr, sess.Addr) {
-			session = sess
-			break
+			ser.SendPacket(addr, rpk)
+			return
 		}
-	}
 
-	return session
+		if npk.MTU > raknet.MaxMTU {
+			return
+		}
+
+		rpk := &protocol.OpenConnectionResponseOne{}
+		rpk.ServerGuid = ser.uid
+		rpk.MTU = uint16(npk.MTU)
+
+		err = rpk.Encode()
+		if err != nil {
+			ser.Logger.Warn(err)
+			return
+		}
+
+		ser.SendPacket(addr, rpk)
+	case *protocol.OpenConnectionRequestTwo:
+		err = npk.Decode()
+		if err != nil {
+			return
+		}
+
+		epk := ser.validateNewConnection(addr)
+		if epk != nil {
+			err = epk.Encode()
+			if err != nil {
+				ser.Logger.Warn(err)
+				return
+			}
+
+			ser.SendPacket(addr, epk)
+			return
+		}
+
+		if ser.HasSessionGUID(npk.ClientGuid) {
+			rpk := &protocol.AlreadyConnected{}
+
+			err = rpk.Encode()
+			if err != nil {
+				ser.Logger.Warn(err)
+				return
+			}
+
+			ser.SendPacket(addr, rpk)
+			return
+		}
+
+		if npk.MTU > raknet.MaxMTU {
+			return
+		}
+
+		rpk := &protocol.OpenConnectionResponseTwo{}
+		rpk.ServerGuid = ser.uid
+		rpk.ClientAddress = *ser.newSystemAddress(addr)
+		rpk.MTU = npk.MTU
+		rpk.EncrtptionEnabled = false
+
+		err = rpk.Encode()
+		if err != nil {
+			return
+		}
+
+		// handler: pre connect
+
+		session = &Session{
+			Addr:   addr,
+			Conn:   ser.conn,
+			GUID:   npk.ClientGuid,
+			Logger: ser.Logger,
+			MTU:    ser.MTU,
+		}
+
+		ser.storeSession(addr, session)
+
+		ser.SendPacket(addr, rpk)
+	}
 }
 
-func (ser *Server) newSession(addr *net.UDPAddr) *Session {
-	uid, _ := uuid.NewV4()
-
-	return &Session{
-		Addr:   addr,
-		Conn:   ser.conn,
-		UUID:   uid,
-		Logger: ser.Logger,
+func (ser *Server) newSystemAddress(addr *net.UDPAddr) *raknet.SystemAddress {
+	return &raknet.SystemAddress{
+		IP:   addr.IP,
+		Port: uint16(addr.Port),
 	}
 }
 
-func (ser *Server) CloseSessionAddr(addr *net.UDPAddr, reason string) error {
-	session := ser.GetSession(addr)
-	if session == nil {
-		return errors.New("couldn't find a session")
+// validateNewConnection returns error packets if the sender has problems
+func (ser *Server) validateNewConnection(addr *net.UDPAddr) raknet.Packet {
+	if ser.HasSession(addr) {
+		return &protocol.AlreadyConnected{}
+	} else if ser.Count() >= ser.MaxConnections && ser.MaxConnections >= 0 {
+		return &protocol.NoFreeIncomingConnections{}
+	} else if ser.HasBlockedAddress(addr.IP) {
+		return &protocol.ConnectionBanned{}
 	}
-
-	return ser.CloseSession(session.UUID, reason)
-}
-
-func (ser *Server) CloseSession(uid uuid.UUID, reason string) error {
-	session, ok := ser.Sessions[uid]
-	if !ok {
-		return errors.New("couldn't find a session")
-	}
-
-	delete(ser.Sessions, uid)
-
-	session.SendPacket(&protocol.DisconnectionNotification{}, raknet.Unreliable, 0)
 
 	return nil
 }
 
-func (ser *Server) SendPacket(addr *net.UDPAddr, b []byte) {
+func (ser *Server) Count() int {
+	return ser.sessions.Count()
+}
+
+/*
+func (ser *Server) Sessions() map[string]*Sessions {
+	return ser.sessions.Items()
+}*/
+
+func (ser *Server) storeSession(addr net.Addr, session *Session) {
+	ser.sessions.Set(addr.String(), session)
+}
+
+func (ser *Server) restoreSession(addr net.Addr) (*Session, bool) {
+	value, ok := ser.sessions.Get(addr.String())
+	if !ok {
+		return nil, false
+	}
+
+	session, ok := value.(*Session)
+	if !ok {
+		ser.Logger.Warn("Invaild value, wants *Session")
+		return nil, false
+	}
+
+	return session, true
+}
+
+func (ser *Server) existSession(addr net.Addr) bool {
+	_, b := ser.restoreSession(addr)
+	return b
+}
+
+func (ser *Server) removeSession(addr net.Addr) {
+	ser.sessions.Remove(addr.String())
+}
+
+// RangeSessions processes for the sessions instead of "for range".
+// if f returns false, stops the loop.
+//
+// key is string(returned net.Addr.String()), value is *Session
+// returns errors if key and value is invalid.
+func (ser *Server) RangeSessions(f func(key string, value *Session) bool) error {
+	for item := range ser.sessions.IterBuffered() {
+		session, ok := item.Val.(*Session)
+		if !ok {
+			return errors.New("invalid value, wants *Session")
+		}
+
+		if !f(item.Key, session) {
+			break
+		}
+	}
+
+	return nil
+}
+
+func (ser *Server) GetSessionGUID(guid int64) (*Session, bool) {
+	var session *Session
+
+	err := ser.RangeSessions(func(key string, sess *Session) bool {
+		if sess.GUID == guid {
+			session = sess
+			return false
+		}
+
+		return true
+	})
+
+	if err != nil {
+		ser.Logger.Warn(err)
+		return nil, false
+	}
+
+	return session, session != nil
+}
+
+func (ser *Server) HasSession(addr net.Addr) bool {
+	return ser.existSession(addr)
+}
+
+func (ser *Server) HasSessionGUID(guid int64) bool {
+	_, b := ser.GetSessionGUID(guid)
+
+	return b
+}
+
+func (ser *Server) GetSession(addr *net.UDPAddr) (*Session, bool) {
+	session, ok := ser.restoreSession(addr)
+	if !ok {
+		return nil, false
+	}
+
+	if session.State() == StateDisconected {
+		ser.CloseSession(addr, "Already closed")
+
+		session = nil
+	}
+
+	return session, true
+}
+
+func (ser *Server) closeSession(session *Session) {
+	ser.removeSession(session.Addr)
+
+	session.SendPacket(&protocol.DisconnectionNotification{}, raknet.Unreliable, 0)
+}
+
+func (ser *Server) CloseSession(addr *net.UDPAddr, reason string) error {
+	session, ok := ser.restoreSession(addr)
+	if !ok {
+		return errors.New("couldn't find the session")
+	}
+
+	ser.closeSession(session)
+
+	return nil
+}
+
+func (ser *Server) CloseSessionGUID(guid int64, reason string) error {
+	session, ok := ser.GetSessionGUID(guid)
+	if !ok {
+		return errors.New("couldn't find the session")
+	}
+
+	ser.closeSession(session)
+
+	return nil
+}
+
+func (ser *Server) SendPacket(addr *net.UDPAddr, pk raknet.Packet) {
+	ser.SendRawPacket(addr, pk.Bytes())
+}
+
+func (ser *Server) SendRawPacket(addr *net.UDPAddr, b []byte) {
 	go func() {
 		ser.conn.WriteToUDP(b, addr)
 	}()
@@ -271,12 +518,10 @@ func (ser *Server) Close() error {
 
 	ser.state = StateClosed
 
-	for _, session := range ser.Sessions {
-		err := session.Close()
-		if err != nil {
-			return err
-		}
-	}
+	ser.RangeSessions(func(key string, session *Session) bool {
+		ser.closeSession(session)
+		return true
+	})
 
 	err := ser.conn.Close()
 	if err != nil {
@@ -284,6 +529,18 @@ func (ser *Server) Close() error {
 	}
 
 	return nil
+}
+
+func (ser *Server) IsBlockedAddress(ip net.IP) bool {
+	return ser.blockedAddresses.Has(ip.String())
+}
+
+func (ser *Server) SetBlockedAddress(ip net.IP, exp Expire) {
+	ser.blockedAddresses.Set(ip.String(), exp)
+}
+
+func (ser *Server) RemoveBlockedAddress(ip net.IP) {
+	ser.blockedAddresses.Remove(ip.String())
 }
 
 func (ser *Server) Packet(b []byte) (raknet.Packet, error) {

@@ -271,11 +271,3 @@ func (rec *Record) Numbers() []int {
 
 	return numbers
 }
-
-type SessionState int
-
-const (
-	StateDisconected SessionState = iota
-	StateHandshaking
-	StateConnected
-)
