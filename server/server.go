@@ -531,7 +531,7 @@ func (ser *Server) Close() error {
 	return nil
 }
 
-func (ser *Server) IsBlockedAddress(ip net.IP) bool {
+func (ser *Server) HasBlockedAddress(ip net.IP) bool {
 	return ser.blockedAddresses.Has(ip.String())
 }
 
