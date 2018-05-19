@@ -260,7 +260,7 @@ func (ser *Server) handlePacket(ctx context.Context, addr *net.UDPAddr, b []byte
 
 		session, ok := ser.GetSession(addr)
 		if ok {
-			if session.State() == StateConnected {
+			if session.State == StateConnected {
 				ser.CloseSession(session.Addr, "Client re-instantiated connection")
 			}
 		}
