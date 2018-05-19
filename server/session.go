@@ -42,8 +42,8 @@ type Session struct {
 	GUID   int64
 	MTU    int
 
-	messageIndex int
-	splitId      int
+	messageIndex binary.Triad
+	splitId      binary.Triad
 
 	ctx context.Context
 
