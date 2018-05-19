@@ -14,8 +14,6 @@ import (
 	"errors"
 	"net"
 
-	"github.com/beito123/go-raknet/binary"
-
 	"github.com/beito123/go-raknet/protocol"
 
 	raknet "github.com/beito123/go-raknet"
@@ -44,10 +42,11 @@ type Session struct {
 	GUID   int64
 	MTU    int
 
-	messageIndex binary.Triad
-	splitId      binary.Triad
+	messageIndex int
+	splitId      int
 
-	ctx   context.Context // TODO: remove
+	ctx context.Context
+
 	state SessionState
 }
 
@@ -59,20 +58,25 @@ func (session *Session) State() SessionState {
 	return session.state
 }
 
-func (session *Session) handlePacket(pk raknet.Packet) error {
+func (session *Session) handlePacket(pk raknet.Packet) {
 	if session.State() == StateDisconected {
-		return errSessionClosed
+		return
 	}
 
-	return nil
 }
 
 func (session *Session) handleCustomPacket(pk *protocol.CustomPacket) {
-	//
+	if session.State() == StateDisconected {
+		return
+	}
+
 }
 
 func (session *Session) handleACKPacket(pk *protocol.ACK) {
-	//
+	if session.State() == StateDisconected {
+		return
+	}
+
 }
 
 func (session *Session) SendPacket(pk raknet.Packet, rea raknet.Reliability, channel int) error {
@@ -83,12 +87,14 @@ func (session *Session) SendRawPacket(pk raknet.Packet) {
 	session.Server.SendPacket(session.Addr, pk)
 }
 
-func (session *Session) update() error {
-	if session.State() == StateDisconected {
-		return errSessionClosed
+func (session *Session) update() {
+	select {
+	case <-session.ctx.Done():
+		return
+	default:
 	}
 
-	return nil
+	//
 }
 
 // Close closes the session
@@ -103,4 +109,14 @@ func (session *Session) Close() error {
 	session.state = StateDisconected
 
 	return nil
+}
+
+func (session *Session) close() {
+	if session.State() == StateDisconected {
+		return
+	}
+
+	session.state = StateDisconected
+
+	//
 }
