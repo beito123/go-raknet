@@ -11,6 +11,7 @@ package binary
 
 import (
 	"io"
+	"strconv"
 
 	"github.com/beito123/binary"
 )
@@ -20,9 +21,66 @@ const (
 	TriadSize = 3
 )
 
+const (
+	MinTriad = 0
+	MaxTriad = 16777216
+)
+
+// ToTriad convert int to Triad.
+// but minus is no supported.
+// example: 16777217 int -> 0 Triad
+func ToTriad(a int) Triad {
+	return Triad(a % (MaxTriad + 1))
+}
+
 // Triad is 3bytes data for Raknet
 // Using index counter in Raknet
 type Triad uint32
+
+func (t Triad) Plus(d int) (result Triad) {
+	result = t + Triad(d)
+	if result > MaxTriad {
+		panic("constant" + strconv.Itoa(int(result)) + "overflows Triad")
+	}
+
+	return result
+}
+
+func (t Triad) Minus(d int) Triad {
+	return t.Plus(-d)
+}
+
+func (t Triad) Multi(d int) (result Triad) {
+	result = t * ToTriad(d)
+	if result > MaxTriad {
+		panic("constant" + strconv.Itoa(int(result)) + "overflows Triad")
+	}
+
+	return result
+}
+
+
+func (t Triad) Divide(d int) (result Triad) {
+	result = t / ToTriad(d)
+	if result > MaxTriad {
+		panic("constant" + strconv.Itoa(int(result)) + "overflows Triad")
+	}
+
+	return result
+}
+
+func (t Triad) Remainder(d int) Triad {
+	f := t % ToTriad(d)
+	if f > MaxTriad {
+		return 0
+	}
+
+	return f
+}
+
+func (t Triad) Vaild() bool {
+	return t <= MaxTriad
+}
 
 // ReadTriad read Triad value
 func ReadTriad(v []byte) Triad {
