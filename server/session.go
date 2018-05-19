@@ -46,35 +46,40 @@ type Session struct {
 	messageIndex binary.Triad
 	splitId      binary.Triad
 
+	reliablePackets []int
+
+	sendQueue         []*protocol.EncapsulatedPacket
+	recoveryQueue     [][]*protocol.EncapsulatedPacket
+	ackReceiptPackets map[int]*protocol.EncapsulatedPacket
+
+	sendSequenceNumber    int
+	receiveSequenceNumber int
+
 	ctx context.Context
 
-	state SessionState
+	State SessionState
 }
 
 func (session *Session) init() {
-	session.state = StateConnected
-}
-
-func (session *Session) State() SessionState {
-	return session.state
+	session.State = StateDisconected
 }
 
 func (session *Session) handlePacket(pk raknet.Packet) {
-	if session.State() == StateDisconected {
+	if session.State == StateDisconected {
 		return
 	}
 
 }
 
 func (session *Session) handleCustomPacket(pk *protocol.CustomPacket) {
-	if session.State() == StateDisconected {
+	if session.State == StateDisconected {
 		return
 	}
 
 }
 
 func (session *Session) handleACKPacket(pk *protocol.ACK) {
-	if session.State() == StateDisconected {
+	if session.State == StateDisconected {
 		return
 	}
 
@@ -102,22 +107,22 @@ func (session *Session) update() {
 // Notice!: Don't use this close function for close session
 // Use CloseSession in Server instead of it
 func (session *Session) Close() error {
-	if session.State() == StateDisconected {
+	if session.State == StateDisconected {
 		return errSessionClosed
 	}
 
 	//session.Server.CloseSession(session.UUID, "Disconnected from server")
-	session.state = StateDisconected
+	session.State = StateDisconected
 
 	return nil
 }
 
 func (session *Session) close() {
-	if session.State() == StateDisconected {
+	if session.State == StateDisconected {
 		return
 	}
 
-	session.state = StateDisconected
+	session.State = StateDisconected
 
 	//
 }
