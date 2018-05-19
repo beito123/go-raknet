@@ -32,3 +32,7 @@ func (base *BasePacket) Decode(pk raknet.Packet) error {
 
 	return nil
 }
+
+func (base *BasePacket) Bytes() []byte {
+	return base.RaknetStream.AllBytes()
+}
