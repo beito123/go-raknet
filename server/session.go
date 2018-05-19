@@ -51,8 +51,8 @@ type Session struct {
 	state SessionState
 }
 
-func (session *Session) Init() {
-
+func (session *Session) init() {
+	session.state = StateConnected
 }
 
 func (session *Session) State() SessionState {
