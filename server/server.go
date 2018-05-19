@@ -508,7 +508,7 @@ func (ser *Server) GetSession(addr *net.UDPAddr) (*Session, bool) {
 		return nil, false
 	}
 
-	if session.State() == StateDisconected {
+	if session.State == StateDisconected {
 		ser.CloseSession(addr, "Already closed")
 
 		session = nil
