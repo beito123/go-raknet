@@ -64,8 +64,6 @@ type Server struct {
 
 	sessions         cmap.ConcurrentMap
 	blockedAddresses cmap.ConcurrentMap
-
-	ctx context.Context // ummm...
 }
 
 func (ser *Server) State() ServerState {
@@ -81,10 +79,11 @@ func (ser *Server) IsClosed() bool {
 }
 
 func (ser *Server) init() {
+	// init maps
 	ser.sessions = cmap.New()
 	ser.blockedAddresses = cmap.New()
 
-	// register pacekts
+	// readly protocols
 	protocol := new(protocol.Protocol)
 	protocol.RegisterPackets()
 
@@ -92,9 +91,12 @@ func (ser *Server) init() {
 	ser.pongid = binary.ReadLong(ser.UUID.Bytes()[8:16])
 }
 
-func (ser *Server) ListenAndServe(addr *net.UDPAddr) error {
-	if ser.IsRunning() {
+func (ser *Server) ListenAndServe(ctx context.Context, addr *net.UDPAddr) error {
+	switch ser.State() {
+	case StateRunning:
 		return errAlreadyRunning
+	case StateClosed:
+		return errServerClosed
 	}
 
 	conn, err := net.ListenUDP("udp", addr)
@@ -102,14 +104,15 @@ func (ser *Server) ListenAndServe(addr *net.UDPAddr) error {
 		return err
 	}
 
-	return ser.Serve(conn)
+	return ser.Serve(ctx, conn)
 }
 
 // Serve serves a Raknet server
-func (ser *Server) Serve(l *net.UDPConn) error {
-	if ser.IsRunning() {
+func (ser *Server) Serve(ctx context.Context, l *net.UDPConn) error {
+	switch ser.State() {
+	case StateRunning:
 		return errAlreadyRunning
-	} else if ser.IsClosed() {
+	case StateClosed:
 		return errServerClosed
 	}
 
@@ -117,13 +120,13 @@ func (ser *Server) Serve(l *net.UDPConn) error {
 
 	ser.init()
 
-	ser.ctx = context.Background()
-
 	// Waits close command from context.Context
 	go func() {
-		<-ser.ctx.Done()
+		<-ctx.Done()
 
-		err := ser.Close()
+		ser.state = StateClosed
+
+		err := ser.conn.Close()
 		if err != nil {
 			ser.Logger.Warn(err)
 		}
@@ -135,16 +138,14 @@ func (ser *Server) Serve(l *net.UDPConn) error {
 		for {
 			time.Sleep(1 * time.Nanosecond) // lower cpu usage
 
+			select {
+			case <-ctx.Done():
+				break
+			default:
+			}
+
 			err := ser.RangeSessions(func(key string, session *Session) bool {
-				err := session.update()
-				if err != nil {
-					select {
-					case <-ser.ctx.Done():
-						return false
-					default:
-						ser.Logger.Warn(err)
-					}
-				}
+				session.update()
 
 				return true
 			})
@@ -163,7 +164,7 @@ func (ser *Server) Serve(l *net.UDPConn) error {
 		_, addr, err := l.ReadFromUDP(buf)
 		if err != nil {
 			select {
-			case <-ser.ctx.Done():
+			case <-ctx.Done():
 				//Shutting down listener
 				ser.Logger.Info("Shutting down listenner")
 				return nil
@@ -172,14 +173,17 @@ func (ser *Server) Serve(l *net.UDPConn) error {
 			}
 		}
 
-		ser.handlePacket(addr, buf)
+		ser.handlePacket(ctx, addr, buf)
 	}
 
 	return nil
 }
 
-func (ser *Server) handlePacket(addr *net.UDPAddr, b []byte) {
+func (ser *Server) handlePacket(ctx context.Context, addr *net.UDPAddr, b []byte) {
 	// check blocked address
+	if ser.HasBlockedAddress(addr.IP) {
+		return
+	}
 
 	// new packet
 	pk, err := ser.Packet(b)
@@ -187,8 +191,6 @@ func (ser *Server) handlePacket(addr *net.UDPAddr, b []byte) {
 		ser.Logger.Warn(err)
 		return
 	}
-
-	var session *Session
 
 	switch npk := pk.(type) {
 	case *protocol.UnconnectedPing, *protocol.UnconnectedPingOpenConnections:
@@ -225,6 +227,8 @@ func (ser *Server) handlePacket(addr *net.UDPAddr, b []byte) {
 		}
 
 		ser.SendPacket(addr, pong)
+
+		return
 	case *protocol.OpenConnectionRequestOne:
 		err = npk.Decode()
 		if err != nil {
@@ -285,6 +289,8 @@ func (ser *Server) handlePacket(addr *net.UDPAddr, b []byte) {
 		}
 
 		ser.SendPacket(addr, rpk)
+
+		return
 	case *protocol.OpenConnectionRequestTwo:
 		err = npk.Decode()
 		if err != nil {
@@ -333,18 +339,37 @@ func (ser *Server) handlePacket(addr *net.UDPAddr, b []byte) {
 
 		// handler: pre connect
 
-		session = &Session{
+		session := &Session{
 			Addr:   addr,
 			Conn:   ser.conn,
 			GUID:   npk.ClientGuid,
 			Logger: ser.Logger,
 			MTU:    ser.MTU,
+			ctx:    ctx,
 		}
 
 		ser.storeSession(addr, session)
 
 		ser.SendPacket(addr, rpk)
+
+		return
 	}
+
+	session, ok := ser.GetSession(addr)
+	if !ok {
+		ser.Logger.Debug("Invalid connctions from " + addr.String())
+		return
+	}
+
+	switch npk := pk.(type) {
+	case *protocol.ACK:
+		session.handleACKPacket(npk)
+	case *protocol.CustomPacket:
+		session.handleCustomPacket(npk)
+	default:
+		session.handlePacket(npk)
+	}
+
 }
 
 func (ser *Server) newSystemAddress(addr *net.UDPAddr) *raknet.SystemAddress {
@@ -505,30 +530,6 @@ func (ser *Server) SendRawPacket(addr *net.UDPAddr, b []byte) {
 	go func() {
 		ser.conn.WriteToUDP(b, addr)
 	}()
-}
-
-func (ser *Server) Close() error {
-	if !ser.IsRunning() {
-		if ser.IsClosed() {
-			return errServerClosed
-		} else {
-			return errors.New("no running the server")
-		}
-	}
-
-	ser.state = StateClosed
-
-	ser.RangeSessions(func(key string, session *Session) bool {
-		ser.closeSession(session)
-		return true
-	})
-
-	err := ser.conn.Close()
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (ser *Server) HasBlockedAddress(ip net.IP) bool {
