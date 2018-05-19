@@ -79,12 +79,14 @@ func (rs *RaknetStream) String(value *string) error {
 
 // PutString puts string(len short, str string) to Buffer
 func (rs *RaknetStream) PutString(value string) error {
-	n := uint16(len(value))
-	err := rs.PutShort(n)
+	b := []byte(value)
+	
+	err := rs.PutShort(uint16(len(b)))
 	if err != nil {
 		return err
 	}
-	return rs.Put([]byte(value))
+
+	return rs.Put(b)
 }
 
 // Address sets address got from Buffer to addr and port
