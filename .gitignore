@@ -1,5 +1,8 @@
 # ignore files and dirs
 
+## remove temp files
+.exe
+
 ## For IntelliJ IDEA
 /.idea/
 

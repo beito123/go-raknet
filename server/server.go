@@ -12,6 +12,7 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"time"
 
@@ -39,10 +40,6 @@ var (
 	errServerClosed             = errors.New("server closed")
 	errInvalidMaxAsyncTaskCount = errors.New("invalid max async task count")
 )
-
-func NewServer(logger raknet.Logger, maxConnections int, MTU int) {
-	//
-}
 
 type Server struct {
 	Logger         raknet.Logger
@@ -86,11 +83,16 @@ func (ser *Server) init() {
 	ser.blockedAddresses = cmap.New()
 
 	// readly protocols
-	protocol := new(protocol.Protocol)
-	protocol.RegisterPackets()
+	ser.protocol = new(protocol.Protocol)
+	ser.protocol.RegisterPackets()
 
 	ser.uid = binary.ReadLong(ser.UUID.Bytes()[:8])
 	ser.pongid = binary.ReadLong(ser.UUID.Bytes()[8:16])
+
+	//if no set, set default
+	if ser.MTU < raknet.MinMTU || ser.MTU > raknet.MaxMTU {
+		ser.MTU = raknet.MaxMTU
+	}
 }
 
 func (ser *Server) ListenAndServe(ctx context.Context, addr *net.UDPAddr) error {
@@ -161,7 +163,7 @@ func (ser *Server) Serve(ctx context.Context, l *net.UDPConn) error {
 
 	// Reads packets from udp socket, and handles them
 	// in main thread
-	var buf []byte
+	var buf = make([]byte, 2048)
 	for {
 		_, addr, err := l.ReadFromUDP(buf)
 		if err != nil {
@@ -175,6 +177,12 @@ func (ser *Server) Serve(ctx context.Context, l *net.UDPConn) error {
 			}
 		}
 
+		ser.Logger.Debug("Connection:" + addr.String())
+
+		if len(buf) <= 0 {
+			continue
+		}
+
 		ser.handlePacket(ctx, addr, buf)
 	}
 
@@ -182,32 +190,42 @@ func (ser *Server) Serve(ctx context.Context, l *net.UDPConn) error {
 }
 
 func (ser *Server) handlePacket(ctx context.Context, addr *net.UDPAddr, b []byte) {
+	if len(b) <= 0 {
+		return
+	}
+
 	// check blocked address
 	if ser.HasBlockedAddress(addr.IP) {
 		return
 	}
 
+	ser.Logger.Debug("handle a packet from" + addr.String())
+
 	// new packet
-	pk, err := ser.Packet(b)
-	if err != nil {
-		ser.Logger.Warn(err)
+
+	pk, ok := ser.protocol.Packet(b[0])
+	if !ok {
+		ser.Logger.Warn("unknown packet id:", pk.ID())
 		return
 	}
 
+	pk.SetBytes(b)
+
 	switch npk := pk.(type) {
 	case *protocol.UnconnectedPing, *protocol.UnconnectedPingOpenConnections:
-		if ser.BroadcastingEnabled {
+		if !ser.BroadcastingEnabled {
 			return
 		}
 
 		ping := npk.(*protocol.UnconnectedPing)
 
-		err = ping.Decode()
+		err := ping.Decode()
 		if err != nil {
 			ser.Logger.Warn(err)
+			return
 		}
 
-		if ping.ID() != protocol.IDUnconnectedPing &&
+		if pk.ID() != protocol.IDUnconnectedPing &&
 			(ser.Count() >= ser.MaxConnections || ser.MaxConnections >= 0) {
 			return
 		}
@@ -229,11 +247,13 @@ func (ser *Server) handlePacket(ctx context.Context, addr *net.UDPAddr, b []byte
 			return
 		}
 
+		fmt.Printf("%#v", pong.Bytes())
+
 		ser.SendPacket(addr, pong)
 
 		return
 	case *protocol.OpenConnectionRequestOne:
-		err = npk.Decode()
+		err := npk.Decode()
 		if err != nil {
 			ser.Logger.Warn(err)
 		}
@@ -295,7 +315,7 @@ func (ser *Server) handlePacket(ctx context.Context, addr *net.UDPAddr, b []byte
 
 		return
 	case *protocol.OpenConnectionRequestTwo:
-		err = npk.Decode()
+		err := npk.Decode()
 		if err != nil {
 			return
 		}
@@ -547,13 +567,13 @@ func (ser *Server) RemoveBlockedAddress(ip net.IP) {
 	ser.blockedAddresses.Remove(ip.String())
 }
 
-func (ser *Server) Packet(b []byte) (raknet.Packet, error) {
+func (ser *Server) packet(b []byte) (raknet.Packet, error) {
 	if len(b) <= 0 {
 		return nil, errors.New("no enough bytes")
 	}
 
-	pk := ser.protocol.Packet(b[0])
-	if pk == nil {
+	pk, ok := ser.protocol.Packet(b[0])
+	if !ok {
 		return nil, errors.New("unknown packet")
 	}
 
