@@ -14,6 +14,7 @@ import (
 	"errors"
 	"net"
 
+	"github.com/beito123/go-raknet/binary"
 	"github.com/beito123/go-raknet/protocol"
 
 	raknet "github.com/beito123/go-raknet"
