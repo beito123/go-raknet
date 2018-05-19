@@ -9,7 +9,10 @@ package protocol
  * http://opensource.org/licenses/mit-license.php
  */
 
-import "github.com/beito123/go-raknet"
+import (
+	"github.com/beito123/go-raknet"
+	"github.com/beito123/go-raknet/identifier"
+)
 
 type ConnectedPing struct {
 	BasePacket
@@ -195,7 +198,7 @@ type UnconnectedPong struct {
 	Timestamp       int64
 	PongID          int64
 	Magic           bool
-	Identifier      raknet.Identifier
+	Identifier      identifier.Identifier
 	ConnectionMagic []byte
 	Connection      raknet.ConnectionType
 }
@@ -261,9 +264,9 @@ func (pk *UnconnectedPong) Decode() error {
 
 	pk.Magic = pk.CheckMagic()
 
-	var identifier string
+	var id string
 
-	err = pk.String(&identifier)
+	err = pk.String(&id)
 	if err != nil {
 		return err
 	}
@@ -279,9 +282,9 @@ func (pk *UnconnectedPong) Decode() error {
 		pk.Connection = raknet.ConnectionVanilla
 	}
 
-	pk.Identifier = raknet.Identifier{
-		Identifier:     identifier,
-		ConnectionType: pk.Connection,
+	pk.Identifier = identifier.Base{
+		Identifier: id,
+		Connection: pk.Connection,
 	}
 
 	return nil

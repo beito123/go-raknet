@@ -15,6 +15,8 @@ import (
 	"net"
 	"time"
 
+	"github.com/beito123/go-raknet/identifier"
+
 	"github.com/beito123/binary"
 
 	raknet "github.com/beito123/go-raknet"
@@ -47,8 +49,8 @@ type Server struct {
 	Handlers       []Handler
 	MaxConnections int
 	MTU            int
-	Identifier     raknet.Identifier
-	protocol       protocol.Protocol
+	Identifier     identifier.Identifier
+	protocol       *protocol.Protocol
 
 	UUID uuid.UUID
 
@@ -218,6 +220,7 @@ func (ser *Server) handlePacket(ctx context.Context, addr *net.UDPAddr, b []byte
 			Timestamp:  ping.Timestamp,
 			PongID:     ser.pongid,
 			Identifier: ser.Identifier,
+			Connection: ser.Identifier.ConnectionType(),
 		}
 
 		err = pong.Encode()
