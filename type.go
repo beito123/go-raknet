@@ -58,7 +58,7 @@ var ConnectionVanilla = ConnectionType{
 	IsVanilla: true,
 }
 
-// ConnectionGoRaknet is a go-raknet connection.
+// ConnectionGoRaknet is a connection from go-raknet.
 var ConnectionGoRaknet = ConnectionType{
 	UUID:    uuid.FromStringOrNil("495248b9-d485-4389-acd0-175fdb2233cf"),
 	Name:    "GoRaknet",
@@ -66,7 +66,7 @@ var ConnectionGoRaknet = ConnectionType{
 	Version: "2.9.2",
 }
 
-// ConnectionType is connection info struct
+// ConnectionType used to signify which implementation of the Raknet protocol
 type ConnectionType struct {
 	UUID      uuid.UUID
 	Name      string
@@ -74,16 +74,6 @@ type ConnectionType struct {
 	Version   string
 	Metadata  Metadata
 	IsVanilla bool
-}
-
-// Identifier represents an identifier sent from a server on the local network
-type Identifier struct {
-	Identifier     string
-	ConnectionType ConnectionType
-}
-
-func (id *Identifier) Build() string {
-	return id.Identifier
 }
 
 /*
