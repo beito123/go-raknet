@@ -23,7 +23,7 @@ type Logger interface {
 	RaknetProtocol Interface
 */
 
-// Packet is basic packet interface
+// Packet is a basic packet
 type Packet interface {
 	ID() byte
 	Encode() error
@@ -33,7 +33,7 @@ type Packet interface {
 	New() Packet
 }
 
-// Protocol is packet protocol interface
+// Protocol is a packet protocol
 type Protocol interface {
 	RegisterPackets()
 	Packet(id byte) Packet
