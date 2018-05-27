@@ -43,7 +43,7 @@ var (
 
 type Server struct {
 	Logger         raknet.Logger
-	Handlers       []Handler
+	Handler        Handler
 	MaxConnections int
 	MTU            int
 	Identifier     identifier.Identifier
@@ -134,6 +134,10 @@ func (ser *Server) Serve(ctx context.Context, l *net.UDPConn) error {
 		if err != nil {
 			ser.Logger.Warn(err)
 		}
+
+		if ser.Handler != nil {
+			ser.Handler.CloseServer()
+		}
 	}()
 
 	// Updates the sessions connected already
@@ -149,7 +153,9 @@ func (ser *Server) Serve(ctx context.Context, l *net.UDPConn) error {
 			}
 
 			err := ser.RangeSessions(func(key string, session *Session) bool {
-				session.update()
+				if !session.update() { // if it is closed, remove session from server
+					ser.removeSession(session.Addr)
+				}
 
 				return true
 			})
@@ -160,6 +166,10 @@ func (ser *Server) Serve(ctx context.Context, l *net.UDPConn) error {
 			}
 		}
 	}()
+
+	if ser.Handler != nil {
+		ser.Handler.StartServer()
+	}
 
 	// Reads packets from udp socket, and handles them
 	// in main thread
@@ -368,6 +378,7 @@ func (ser *Server) handlePacket(ctx context.Context, addr *net.UDPAddr, b []byte
 			GUID:   npk.ClientGuid,
 			Logger: ser.Logger,
 			MTU:    ser.MTU,
+			State:  StateHandshaking,
 			ctx:    ctx,
 		}
 
