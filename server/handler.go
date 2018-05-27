@@ -10,18 +10,41 @@ package server
  */
 
 import (
+	"net"
+
 	raknet "github.com/beito123/go-raknet"
 )
 
 // Handler handles packets, connections and more from Raknet server
 type Handler interface {
 
-	// OpenConn received a login packet from client
-	OpenConn()
+	// StartServer is called on the server is started
+	StartServer()
+
+	// CloseServer is called on the server is closed
+	CloseServer()
+
+	// HandlePing is called on a ping packet is received
+	HandlePing(addr *net.Addr)
+
+	// OpenPreConn is called before a new session is created
+	OpenPreConn(addr *net.Addr)
+
+	// OpenConn is called on a new session is created
+	OpenConn(uid int64, addr *net.Addr)
+
+	// ClosePreConn is called before a session is closed
+	ClosePreConn(uid int64)
+
+	// CloseConn is called on a session is closed
+	CloseConn(uid int64)
 
 	// HandleRawPacket handles a raw packet no processed in Raknet server
-	HandleRawPacket(uid int64, pk raknet.Packet) error
+	HandleRawPacket(uid int64, pk raknet.Packet)
 
-	// HandlePacket handles a packet processed in Raknet server
-	HandlePacket(uid int64, pk raknet.Packet) error
+	// HandlePacket handles a message packet
+	HandlePacket(uid int64, pk raknet.Packet)
+
+	// HandleUnknownPacket handles a unknown packet
+	HandleUnknownPacket(uid int64, pk raknet.Packet)
 }
