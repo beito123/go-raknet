@@ -36,12 +36,14 @@ const (
 
 // Session
 type Session struct {
-	Addr   *net.UDPAddr
-	Conn   *net.UDPConn
-	Logger raknet.Logger
-	Server *Server
-	GUID   int64
-	MTU    int
+	Addr              *net.UDPAddr
+	Conn              *net.UDPConn
+	Logger            raknet.Logger
+	Server            *Server
+	GUID              int64
+	MTU               int
+	LatencyEnabled    bool
+	LatencyIdentifier int64
 
 	messageIndex binary.Triad
 	splitId      binary.Triad
@@ -60,8 +62,12 @@ type Session struct {
 	State SessionState
 }
 
+func (session *Session) SystemAddress() *raknet.SystemAddress {
+	return raknet.NewSystemAddressBytes([]byte(session.Addr.IP), uint16(session.Addr.Port))
+}
+
 func (session *Session) init() {
-	session.State = StateDisconected
+	//
 }
 
 func (session *Session) handlePacket(pk raknet.Packet) {
@@ -69,6 +75,80 @@ func (session *Session) handlePacket(pk raknet.Packet) {
 		return
 	}
 
+	switch npk := pk.(type) {
+	case *protocol.ConnectedPing:
+		err := npk.Decode()
+		if err != nil {
+			session.Logger.Warn(err)
+			return
+		}
+
+		pong := &protocol.ConnectedPong{
+			Time: npk.Time,
+		}
+
+		err = pong.Encode()
+		if err != nil {
+			session.Logger.Warn(err)
+			return
+		}
+
+		err = session.SendPacket(pong, raknet.Unreliable, raknet.DefaultChannel)
+		if err != nil {
+			session.Logger.Warn(err)
+		}
+	case *protocol.ConnectedPong:
+		err := npk.Decode()
+		if err != nil {
+			session.Logger.Warn(err)
+			return
+		}
+
+		if session.LatencyEnabled {
+			// TODO: writes
+		}
+	case *protocol.ConnectionRequestAccepted:
+		if session.State != StateHandshaking {
+			return
+		}
+
+		err := npk.Decode()
+		if err != nil {
+			session.Logger.Warn(err) // remove
+
+			session.Server.CloseSession(session.Addr, "Failed to login")
+			return
+		}
+
+		hpk := &protocol.NewIncomingConnection{
+			ServerAddress:   *session.SystemAddress(),
+			ClientTimestamp: npk.ServerTimestamp,
+			ServerTimestamp: npk.ClientTimestamp,
+		}
+
+		err = session.SendPacket(hpk, raknet.ReliableOrderedWithACKReceipt, raknet.DefaultChannel)
+		if err != nil {
+			session.Server.CloseSession(session.Addr, "Failed to login")
+		}
+	case *protocol.DisconnectionNotification:
+		err := npk.Decode()
+		if err != nil {
+			session.Logger.Warn(err)
+			return
+		}
+
+		session.Server.CloseSession(session.Addr, "Server disconnected")
+	default:
+		if npk.ID() >= protocol.IDUserPacketEnum { // user packet
+			if session.Server.Handler != nil {
+				session.Server.Handler.HandlePacket(session.GUID, npk)
+			}
+		} else { // unknown packet
+			if session.Server.Handler != nil {
+				session.Server.Handler.HandleUnknownPacket(session.GUID, npk)
+			}
+		}
+	}
 }
 
 func (session *Session) handleCustomPacket(pk *protocol.CustomPacket) {
@@ -93,19 +173,23 @@ func (session *Session) SendRawPacket(pk raknet.Packet) {
 	session.Server.SendPacket(session.Addr, pk)
 }
 
-func (session *Session) update() {
+func (session *Session) update() bool {
 	select {
 	case <-session.ctx.Done():
-		return
+		return false
 	default:
 	}
 
+	if session.State == StateDisconected {
+		return false
+	}
+
 	//
+
+	return true
 }
 
 // Close closes the session
-// Notice!: Don't use this close function for close session
-// Use CloseSession in Server instead of it
 func (session *Session) Close() error {
 	if session.State == StateDisconected {
 		return errSessionClosed
@@ -115,14 +199,4 @@ func (session *Session) Close() error {
 	session.State = StateDisconected
 
 	return nil
-}
-
-func (session *Session) close() {
-	if session.State == StateDisconected {
-		return
-	}
-
-	session.State = StateDisconected
-
-	//
 }
