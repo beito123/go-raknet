@@ -653,3 +653,94 @@ func (pk *OpenConnectionResponseTwo) Decode() error {
 func (pk *OpenConnectionResponseTwo) New() raknet.Packet {
 	return new(OpenConnectionResponseTwo)
 }
+
+type NewIncomingConnection struct {
+	BasePacket
+
+	ServerAddress   raknet.SystemAddress
+	Addresses       []raknet.SystemAddress
+	ServerTimestamp int64
+	ClientTimestamp int64
+}
+
+func (NewIncomingConnection) ID() byte {
+	return IDNewIncomingConnection
+}
+
+func (pk *NewIncomingConnection) Encode() error {
+	err := pk.BasePacket.Encode(pk)
+	if err != nil {
+		return err
+	}
+
+	err = pk.PutAddressSystemAddress(pk.ServerAddress)
+	if err != nil {
+		return err
+	}
+
+	for i := 0; i < 10; i++ {
+		var addr raknet.SystemAddress
+		if i < len(pk.Addresses) {
+			addr = pk.Addresses[i]
+		} else {
+			addr = *raknet.NewSystemAddress("0.0.0.0", 0)
+		}
+
+		err = pk.PutAddressSystemAddress(addr)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = pk.PutLong(pk.ServerTimestamp)
+	if err != nil {
+		return err
+	}
+
+	err = pk.PutLong(pk.ClientTimestamp)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (pk *NewIncomingConnection) Decode() error {
+	err := pk.BasePacket.Decode(pk)
+	if err != nil {
+		return err
+	}
+
+	err = pk.AddressSystemAddress(&pk.ServerAddress)
+	if err != nil {
+		return err
+	}
+
+	addrs := make([]raknet.SystemAddress, 10)
+	for i := 0; i < 10; i++ {
+		var addr raknet.SystemAddress
+
+		err = pk.AddressSystemAddress(&addr)
+		if err != nil {
+			return err
+		}
+
+		addrs[i] = addr
+	}
+
+	err = pk.Long(&pk.ServerTimestamp)
+	if err != nil {
+		return err
+	}
+
+	err = pk.Long(&pk.ClientTimestamp)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (pk *NewIncomingConnection) New() raknet.Packet {
+	return new(NewIncomingConnection)
+}

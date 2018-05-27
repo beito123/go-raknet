@@ -28,6 +28,7 @@ func (protocol *Protocol) RegisterPackets() {
 	protocol.packets[IDConnectionRequest] = &ConnectionRequest{}
 	protocol.packets[IDConnectionRequestAccepted] = &ConnectionRequestAccepted{}
 	protocol.packets[IDAlreadyConnected] = &AlreadyConnected{}
+	protocol.packets[IDNewIncomingConnection] = &NewIncomingConnection{}
 	protocol.packets[IDNoFreeIncomingConnections] = &NoFreeIncomingConnections{}
 	protocol.packets[IDDisconnectionNotification] = &DisconnectionNotification{}
 	protocol.packets[IDConnectionBanned] = &ConnectionBanned{}
