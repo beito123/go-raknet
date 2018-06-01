@@ -26,7 +26,7 @@ const (
 	MinMTU = 400
 
 	// MaxChannel is the maximum size of order channel
-	MaxChannel = 32
+	MaxChannels = 32
 
 	// DefaultChannel is default channel
 	DefaultChannel = 0
@@ -46,8 +46,8 @@ var Magic = []byte{0x00, 0xff, 0xff, 0x00, 0xfe, 0xfe, 0xfe, 0xfe, 0xfd, 0xfd, 0
 var MaxPacketsPerSecond = 500
 
 var (
-	
-	// SendInterval 
+
+	// SendInterval
 	SendInterval             time.Duration = 50 * time.Millisecond
 	RecoverySendInterval                   = SendInterval
 	PingSendInterval                       = 2500 * time.Millisecond
