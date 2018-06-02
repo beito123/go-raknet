@@ -43,7 +43,7 @@ func (pk *ConnectedPing) Decode() error {
 		return err
 	}
 
-	err = pk.Long(&pk.Time)
+	pk.Time, err = pk.Long()
 	if err != nil {
 		return err
 	}
@@ -84,7 +84,7 @@ func (pk *ConnectedPong) Decode() error {
 		return err
 	}
 
-	err = pk.Long(&pk.Time)
+	pk.Time, err = pk.Long()
 	if err != nil {
 		return err
 	}
@@ -102,7 +102,7 @@ type UnconnectedPing struct {
 	Magic           bool
 	PingID          int64
 	ConnectionMagic []byte
-	Connection      raknet.ConnectionType
+	Connection      *raknet.ConnectionType
 }
 
 func (pk UnconnectedPing) ID() byte {
@@ -149,27 +149,27 @@ func (pk *UnconnectedPing) Decode() error {
 		return err
 	}
 
-	err = pk.Long(&pk.Timestamp)
+	pk.Timestamp, err = pk.Long()
 	if err != nil {
 		return err
 	}
 
 	pk.Magic = pk.CheckMagic()
 
-	err = pk.Long(&pk.PingID)
+	pk.PingID, err = pk.Long()
 	if err != nil {
 		return err
 	}
 
 	if pk.Len() < len(raknet.ConnctionTypeMagic) {
-		pk.Connection = raknet.ConnectionVanilla
+		pk.Connection = &raknet.ConnectionVanilla
 
 		return nil
 	}
 
 	pk.ConnectionMagic = pk.Get(len(raknet.ConnctionTypeMagic))
 
-	err = pk.ConnectionType(&pk.Connection)
+	pk.Connection, err = pk.ConnectionType()
 	if err != nil {
 		return err
 	}
@@ -200,7 +200,7 @@ type UnconnectedPong struct {
 	Magic           bool
 	Identifier      identifier.Identifier
 	ConnectionMagic []byte
-	Connection      raknet.ConnectionType
+	Connection      *raknet.ConnectionType
 }
 
 func (pk UnconnectedPong) ID() byte {
@@ -252,21 +252,19 @@ func (pk *UnconnectedPong) Decode() error {
 		return err
 	}
 
-	err = pk.Long(&pk.Timestamp)
+	pk.Timestamp, err = pk.Long()
 	if err != nil {
 		return err
 	}
 
-	err = pk.Long(&pk.PongID)
+	pk.PongID, err = pk.Long()
 	if err != nil {
 		return err
 	}
 
 	pk.Magic = pk.CheckMagic()
 
-	var id string
-
-	err = pk.String(&id)
+	id, err := pk.String()
 	if err != nil {
 		return err
 	}
@@ -274,12 +272,12 @@ func (pk *UnconnectedPong) Decode() error {
 	if pk.Len() >= len(raknet.ConnctionTypeMagic) {
 		pk.ConnectionMagic = pk.Get(len(raknet.ConnctionTypeMagic))
 
-		err = pk.ConnectionType(&pk.Connection)
+		pk.Connection, err = pk.ConnectionType()
 		if err != nil {
 			return err
 		}
 	} else {
-		pk.Connection = raknet.ConnectionVanilla
+		pk.Connection = &raknet.ConnectionVanilla
 	}
 
 	pk.Identifier = identifier.Base{

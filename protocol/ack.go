@@ -97,30 +97,26 @@ func (ack *Acknowledge) Decode(pk raknet.Packet) error {
 		return err
 	}
 
-	var recLen uint16
-	err = ack.Short(&recLen)
+	recLen, err := ack.Short()
 	if err != nil {
 		return err
 	}
 
 	ack.Records = []raknet.Record{}
 	for i := 0; i < int(recLen); i++ {
-		var noRange bool
-		err = ack.Bool(&noRange)
+		noRange, err := ack.Bool()
 		if err != nil {
 			return err
 		}
 
-		var index binary.Triad
-
-		err = ack.LTriad(&index)
+		index, err := ack.LTriad()
 		if err != nil {
 			return err
 		}
 
 		var endIndex binary.Triad
 		if noRange {
-			err = ack.LTriad(&endIndex)
+			endIndex, err = ack.LTriad()
 			if err != nil {
 				return err
 			}

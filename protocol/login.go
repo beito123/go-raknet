@@ -101,7 +101,7 @@ func (pk *ConnectionBanned) Decode() error {
 		return err
 	}
 
-	err = pk.Long(&pk.ServerGUID)
+	pk.ServerGUID, err = pk.Long()
 	if err != nil {
 		return err
 	}
@@ -158,17 +158,17 @@ func (pk *ConnectionRequest) Decode() error {
 		return err
 	}
 
-	err = pk.Long(&pk.ClientGuid)
+	pk.ClientGuid, err = pk.Long()
 	if err != nil {
 		return err
 	}
 
-	err = pk.Long(&pk.Timestamp)
+	pk.Timestamp, err = pk.Long()
 	if err != nil {
 		return err
 	}
 
-	err = pk.Bool(&pk.UseSecurity)
+	pk.UseSecurity, err = pk.Bool()
 	if err != nil {
 		return err
 	}
@@ -183,9 +183,9 @@ func (pk *ConnectionRequest) New() raknet.Packet {
 type ConnectionRequestAccepted struct {
 	BasePacket
 
-	ClientAddress     raknet.SystemAddress
-	SystemIndex       uint16                 // unknown
-	InternalAddresses []raknet.SystemAddress // unknown
+	ClientAddress     *raknet.SystemAddress
+	SystemIndex       uint16                  // unknown
+	InternalAddresses []*raknet.SystemAddress // unknown
 	ClientTimestamp   int64
 	ServerTimestamp   int64
 }
@@ -211,11 +211,11 @@ func (pk *ConnectionRequestAccepted) Encode() error {
 	}
 
 	for i := 0; i < 10; i++ {
-		var address raknet.SystemAddress
+		var address *raknet.SystemAddress
 		if i < len(pk.InternalAddresses) {
 			address = pk.InternalAddresses[i]
 		} else {
-			address = *raknet.NewSystemAddress("0.0.0.0", 0)
+			address = raknet.NewSystemAddress("0.0.0.0", 0)
 		}
 
 		err = pk.PutAddressSystemAddress(address)
@@ -243,30 +243,30 @@ func (pk *ConnectionRequestAccepted) Decode() error {
 		return err
 	}
 
-	err = pk.AddressSystemAddress(&pk.ClientAddress)
+	pk.ClientAddress, err = pk.AddressSystemAddress()
 	if err != nil {
 		return err
 	}
 
-	err = pk.Short(&pk.SystemIndex)
+	pk.SystemIndex, err = pk.Short()
 	if err != nil {
 		return err
 	}
 
-	pk.InternalAddresses = make([]raknet.SystemAddress, 10)
+	pk.InternalAddresses = make([]*raknet.SystemAddress, 10)
 	for i := 0; i < 10; i++ {
-		err = pk.AddressSystemAddress(&pk.InternalAddresses[i])
+		pk.InternalAddresses[i], err = pk.AddressSystemAddress()
 		if err != nil {
 			return err
 		}
 	}
 
-	err = pk.Long(&pk.ClientTimestamp)
+	pk.ClientTimestamp, err = pk.Long()
 	if err != nil {
 		return err
 	}
 
-	err = pk.Long(&pk.ServerTimestamp)
+	pk.ServerTimestamp, err = pk.Long()
 	if err != nil {
 		return err
 	}
@@ -320,14 +320,14 @@ func (pk *IncompatibleProtocol) Decode() error {
 		return err
 	}
 
-	err = pk.Byte(&pk.NetworkProtocol)
+	pk.NetworkProtocol, err = pk.Byte()
 	if err != nil {
 		return err
 	}
 
 	pk.Magic = pk.CheckMagic()
 
-	err = pk.Long(&pk.ServerGuid)
+	pk.ServerGuid, err = pk.Long()
 	if err != nil {
 		return err
 	}
@@ -409,10 +409,10 @@ type OpenConnectionRequestTwo struct {
 	BasePacket
 
 	Magic      bool
-	Address    raknet.SystemAddress
+	Address    *raknet.SystemAddress
 	MTU        uint16
 	ClientGuid int64
-	Connection raknet.ConnectionType
+	Connection *raknet.ConnectionType
 }
 
 func (pk OpenConnectionRequestTwo) ID() byte {
@@ -461,22 +461,22 @@ func (pk *OpenConnectionRequestTwo) Decode() error {
 
 	pk.Magic = pk.CheckMagic()
 
-	err = pk.AddressSystemAddress(&pk.Address)
+	pk.Address, err = pk.AddressSystemAddress()
 	if err != nil {
 		return err
 	}
 
-	err = pk.Short(&pk.MTU)
+	pk.MTU, err = pk.Short()
 	if err != nil {
 		return err
 	}
 
-	err = pk.Long(&pk.ClientGuid)
+	pk.ClientGuid, err = pk.Long()
 	if err != nil {
 		return err
 	}
 
-	err = pk.ConnectionType(&pk.Connection)
+	pk.Connection, err = pk.ConnectionType()
 	if err != nil {
 		return err
 	}
@@ -538,17 +538,17 @@ func (pk *OpenConnectionResponseOne) Decode() error {
 
 	pk.Magic = pk.CheckMagic()
 
-	err = pk.Long(&pk.ServerGuid)
+	pk.ServerGuid, err = pk.Long()
 	if err != nil {
 		return err
 	}
 
-	err = pk.Bool(&pk.UseSecurity)
+	pk.UseSecurity, err = pk.Bool()
 	if err != nil {
 		return err
 	}
 
-	err = pk.Short(&pk.MTU)
+	pk.MTU, err = pk.Short()
 	if err != nil {
 		return err
 	}
@@ -565,10 +565,10 @@ type OpenConnectionResponseTwo struct {
 
 	Magic             bool
 	ServerGuid        int64
-	ClientAddress     raknet.SystemAddress
+	ClientAddress     *raknet.SystemAddress
 	MTU               uint16
 	EncrtptionEnabled bool
-	Connection        raknet.ConnectionType
+	Connection        *raknet.ConnectionType
 }
 
 func (pk OpenConnectionResponseTwo) ID() byte {
@@ -622,27 +622,27 @@ func (pk *OpenConnectionResponseTwo) Decode() error {
 
 	pk.Magic = pk.CheckMagic()
 
-	err = pk.Long(&pk.ServerGuid)
+	pk.ServerGuid, err = pk.Long()
 	if err != nil {
 		return err
 	}
 
-	err = pk.AddressSystemAddress(&pk.ClientAddress)
+	pk.ClientAddress, err = pk.AddressSystemAddress()
 	if err != nil {
 		return err
 	}
 
-	err = pk.Short(&pk.MTU)
+	pk.MTU, err = pk.Short()
 	if err != nil {
 		return err
 	}
 
-	err = pk.Bool(&pk.EncrtptionEnabled)
+	pk.EncrtptionEnabled, err = pk.Bool()
 	if err != nil {
 		return err
 	}
 
-	err = pk.ConnectionType(&pk.Connection)
+	pk.Connection, err = pk.ConnectionType()
 	if err != nil {
 		return err
 	}
@@ -657,8 +657,8 @@ func (pk *OpenConnectionResponseTwo) New() raknet.Packet {
 type NewIncomingConnection struct {
 	BasePacket
 
-	ServerAddress   raknet.SystemAddress
-	Addresses       []raknet.SystemAddress
+	ServerAddress   *raknet.SystemAddress
+	Addresses       []*raknet.SystemAddress
 	ServerTimestamp int64
 	ClientTimestamp int64
 }
@@ -679,11 +679,11 @@ func (pk *NewIncomingConnection) Encode() error {
 	}
 
 	for i := 0; i < 10; i++ {
-		var addr raknet.SystemAddress
+		var addr *raknet.SystemAddress
 		if i < len(pk.Addresses) {
 			addr = pk.Addresses[i]
 		} else {
-			addr = *raknet.NewSystemAddress("0.0.0.0", 0)
+			addr = raknet.NewSystemAddress("0.0.0.0", 0)
 		}
 
 		err = pk.PutAddressSystemAddress(addr)
@@ -711,29 +711,27 @@ func (pk *NewIncomingConnection) Decode() error {
 		return err
 	}
 
-	err = pk.AddressSystemAddress(&pk.ServerAddress)
+	pk.ServerAddress, err = pk.AddressSystemAddress()
 	if err != nil {
 		return err
 	}
 
-	addrs := make([]raknet.SystemAddress, 10)
+	pk.Addresses = make([]*raknet.SystemAddress, 10)
 	for i := 0; i < 10; i++ {
-		var addr raknet.SystemAddress
-
-		err = pk.AddressSystemAddress(&addr)
+		addr, err := pk.AddressSystemAddress()
 		if err != nil {
 			return err
 		}
 
-		addrs[i] = addr
+		pk.Addresses[i] = addr
 	}
 
-	err = pk.Long(&pk.ServerTimestamp)
+	pk.ServerTimestamp, err = pk.Long()
 	if err != nil {
 		return err
 	}
 
-	err = pk.Long(&pk.ClientTimestamp)
+	pk.ClientTimestamp, err = pk.Long()
 	if err != nil {
 		return err
 	}

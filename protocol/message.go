@@ -118,9 +118,7 @@ func (epk *EncapsulatedPacket) Decode() error {
 		return errors.New("no sets buffer")
 	}
 
-	var flags byte
-
-	err := epk.Buf.Byte(&flags)
+	flags, err := epk.Buf.Byte()
 	if err != nil {
 		return err
 	}
@@ -128,8 +126,7 @@ func (epk *EncapsulatedPacket) Decode() error {
 	epk.Reliability = raknet.ReliabilityBinary(flags >> ReliabilityPosition)
 	epk.Split = (flags & FlagSplit) > 0
 
-	var payloadLen uint16
-	err = epk.Buf.Short(&payloadLen)
+	payloadLen, err := epk.Buf.Short()
 	if err != nil {
 		return err
 	}
@@ -137,42 +134,43 @@ func (epk *EncapsulatedPacket) Decode() error {
 	length := int(payloadLen / 8)
 
 	if epk.Reliability.IsReliable() {
-		err = epk.Buf.LTriad(&epk.MessageIndex)
+		epk.MessageIndex, err = epk.Buf.LTriad()
 		if err != nil {
 			return err
 		}
 	}
 
 	if epk.Reliability.IsOrdered() || epk.Reliability.IsSequenced() {
-		err = epk.Buf.LTriad(&epk.OrderIndex)
+		epk.OrderIndex, err = epk.Buf.LTriad()
 		if err != nil {
 			return err
 		}
 
-		err = epk.Buf.Byte(&epk.OrderChannel)
+		epk.OrderChannel, err = epk.Buf.Byte()
 		if err != nil {
 			return err
 		}
 	}
 
 	if epk.Split {
-		err = epk.Buf.Int(&epk.SplitCount)
+		epk.SplitCount, err = epk.Buf.Int()
 		if err != nil {
 			return err
 		}
 
-		err = epk.Buf.Short(&epk.SplitID)
+		epk.SplitID, err = epk.Buf.Short()
 		if err != nil {
 			return err
 		}
 
-		err = epk.Buf.Int(&epk.SplitIndex)
+		epk.SplitIndex, err = epk.Buf.Int()
 		if err != nil {
 			return err
 		}
 	}
 
 	epk.Payload = epk.Buf.Get(length)
+
 	return nil
 }
 
@@ -250,7 +248,7 @@ func (pk *CustomPacket) Decode() error {
 		return err
 	}
 
-	err = pk.LTriad(&pk.Index)
+	pk.Index, err = pk.LTriad()
 	if err != nil {
 		return err
 	}
