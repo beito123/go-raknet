@@ -110,6 +110,24 @@ func WriteLTriad(v Triad) []byte {
 	}
 }
 
+// ReadETriad read Triad value with error
+func ReadETriad(v []byte) (Triad, error) {
+	if len(v) < TriadSize {
+		return 0, nil
+	}
+
+	return ReadTriad(v), nil
+}
+
+// ReadELTriad read Triad value as LittleEndian with error
+func ReadELTriad(v []byte) (Triad, error) {
+	if len(v) < TriadSize {
+		return 0, nil
+	}
+
+	return ReadLTriad(v), nil
+}
+
 // Read reads data into b by order
 func Read(reader io.Reader, order RaknetOrder, data interface{}) error {
 	size := dataSize(data)

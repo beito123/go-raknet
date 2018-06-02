@@ -13,18 +13,18 @@ import raknet "github.com/beito123/go-raknet"
 
 // Identifier ...
 type Identifier interface {
-	ConnectionType() raknet.ConnectionType
+	ConnectionType() *raknet.ConnectionType
 	Build() string
 }
 
 // Base represents an identifier sent from a server on the local network
 type Base struct {
 	Identifier string
-	Connection raknet.ConnectionType
+	Connection *raknet.ConnectionType
 }
 
 func (id Base) ConnectionType() raknet.ConnectionType {
-	return id.Connection
+	return *id.Connection
 }
 
 func (id Base) Build() string {
