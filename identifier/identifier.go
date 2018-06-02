@@ -23,8 +23,8 @@ type Base struct {
 	Connection *raknet.ConnectionType
 }
 
-func (id Base) ConnectionType() raknet.ConnectionType {
-	return *id.Connection
+func (id Base) ConnectionType() *raknet.ConnectionType {
+	return id.Connection
 }
 
 func (id Base) Build() string {
