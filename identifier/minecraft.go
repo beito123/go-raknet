@@ -25,7 +25,7 @@ const (
 //var MinecraftVersionTagAlphabet = []string{"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "."}
 
 type Minecraft struct {
-	Connection raknet.ConnectionType
+	Connection *raknet.ConnectionType
 
 	ServerName        string
 	ServerProtocol    int
@@ -38,7 +38,7 @@ type Minecraft struct {
 	Legacy            bool
 }
 
-func (id Minecraft) ConnectionType() raknet.ConnectionType {
+func (id Minecraft) ConnectionType() *raknet.ConnectionType {
 	return id.Connection
 }
 
