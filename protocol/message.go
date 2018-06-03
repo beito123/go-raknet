@@ -270,7 +270,7 @@ func (pk *CustomPacket) Decode() error {
 }
 
 func (pk *CustomPacket) CalcSize() int {
-	size := 0
+	size := CalcCPacketBaseSize()
 	for _, epk := range pk.Messages {
 		size += epk.CalcSize()
 	}
@@ -280,4 +280,8 @@ func (pk *CustomPacket) CalcSize() int {
 
 func (pk *CustomPacket) New() raknet.Packet {
 	return NewCustomPacket(pk.id)
+}
+
+func CalcCPacketBaseSize() int {
+	return 1 + 3 // pk id + index
 }
