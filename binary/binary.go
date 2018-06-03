@@ -37,6 +37,14 @@ func ToTriad(a int) Triad {
 // Using index counter in Raknet
 type Triad uint32
 
+func (t Triad) Bump() Triad {
+	if t >= MaxTriad {
+		return 0
+	}
+
+	return t + 1
+}
+
 func (t Triad) Plus(d int) (result Triad) {
 	result = t + Triad(d)
 	if result > MaxTriad {
@@ -58,7 +66,6 @@ func (t Triad) Multi(d int) (result Triad) {
 
 	return result
 }
-
 
 func (t Triad) Divide(d int) (result Triad) {
 	result = t / ToTriad(d)
