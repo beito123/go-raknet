@@ -361,7 +361,7 @@ func (ser *Server) handlePacket(ctx context.Context, addr *net.UDPAddr, b []byte
 
 		rpk := &protocol.OpenConnectionResponseTwo{}
 		rpk.ServerGuid = ser.uid
-		rpk.ClientAddress = *ser.newSystemAddress(addr)
+		rpk.ClientAddress = ser.newSystemAddress(addr)
 		rpk.MTU = npk.MTU
 		rpk.EncrtptionEnabled = false
 
