@@ -25,14 +25,14 @@ func main() {
 	uid, _ := uuid.NewV4()
 
 	id := identifier.Minecraft{
-		Connection:        raknet.ConnectionGoRaknet,
-		ServerName:        "Jagajaga",
+		Connection:        &raknet.ConnectionGoRaknet,
+		ServerName:        "Go-raknet server",
 		ServerProtocol:    raknet.NetworkProtocol,
 		VersionTag:        "1.0.0",
 		OnlinePlayerCount: 0,
 		MaxPlayerCount:    10,
 		GUID:              binary.ReadLong(uid.Bytes()[0:8]),
-		WorldName:         "jagajaga-world",
+		WorldName:         "world",
 		Gamemode:          "0",
 		Legacy:            false,
 	}
