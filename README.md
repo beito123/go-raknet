@@ -45,3 +45,4 @@ Thank you very much!
 
 - [go.uuid](https://github.com/satori/go.uuid) (by [satori](https://github.com/satori) License: [MIT License](https://opensource.org/licenses/mit-license.php)) : A UUID library
 - [concurrent-map](https://github.com/orcaman/concurrent-map) (by [orcaman](https://github.com/orcaman) License: [MIT License](https://opensource.org/licenses/mit-license.php)) : A thread-safe map
+- [go-queue](https://github.com/damnever/goqueue) (by [damnever](https://github.com/damnever) License: [MIT License](https://opensource.org/licenses/mit-license.php)) : A queue library
