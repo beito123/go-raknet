@@ -244,6 +244,10 @@ func (ser *Server) handlePacket(ctx context.Context, addr *net.UDPAddr, b []byte
 			return
 		}
 
+		if ser.Handler != nil {
+			ser.Handler.HandlePing(addr) // ummm..., should support changing by handler...?
+		}
+
 		pong := &protocol.UnconnectedPong{
 			Timestamp:  ping.Timestamp,
 			PongID:     ser.pongid,
@@ -262,6 +266,13 @@ func (ser *Server) handlePacket(ctx context.Context, addr *net.UDPAddr, b []byte
 		ser.SendPacket(addr, pong)
 
 		return
+	}
+
+	if ser.Handler != nil {
+		ser.Handler.HandleRawPacket(addr, pk)
+	}
+
+	switch npk := pk.(type) {
 	case *protocol.OpenConnectionRequestOne:
 		err := npk.Decode()
 		if err != nil {
@@ -385,6 +396,10 @@ func (ser *Server) handlePacket(ctx context.Context, addr *net.UDPAddr, b []byte
 		ser.storeSession(addr, session)
 
 		ser.SendPacket(addr, rpk)
+
+		if ser.Handler != nil {
+			ser.Handler.OpenConn(session.GUID, addr)
+		}
 
 		return
 	}

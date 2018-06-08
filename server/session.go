@@ -169,6 +169,10 @@ func (session *Session) handleCustomPacket(pk *protocol.CustomPacket) {
 		return
 	}
 
+	if session.Server.Handler != nil {
+		session.Server.Handler.HandlePacket(session.GUID, pk)
+	}
+
 }
 
 func (session *Session) handleACKPacket(pk *protocol.ACK) {
