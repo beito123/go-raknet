@@ -40,7 +40,7 @@ type Handler interface {
 	CloseConn(uid int64)
 
 	// HandleRawPacket handles a raw packet no processed in Raknet server
-	HandleRawPacket(uid int64, pk raknet.Packet)
+	HandleRawPacket(addr net.Addr, pk raknet.Packet)
 
 	// HandlePacket handles a message packet
 	HandlePacket(uid int64, pk raknet.Packet)
