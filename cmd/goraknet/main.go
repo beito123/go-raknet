@@ -26,10 +26,10 @@ func main() {
 		help          bool
 	)
 
-	// goraknet -port <server port> -maxconnections <max connections> -monitor <ip addr>
-	flag.IntVar(&port, "port", 19132, "a server port")
-	flag.IntVar(&maxConnection, "maxconnections", 10, "max connections")
-	flag.StringVar(&monitor, "monitor", "", "monitor ip")
+	//Command: goraknet -p <server port> -m <max connections> -M <ip addr>
+	flag.IntVar(&port, "p", 19132, "a server port")
+	flag.IntVar(&maxConnection, "m", 10, "max connections")
+	flag.StringVar(&monitor, "M", "", "monitor ip")
 	flag.BoolVar(&help, "help", false, "help")
 	flag.Parse()
 
@@ -44,15 +44,15 @@ func main() {
 	}
 
 	if help {
-		logger.Info("Usage: goraknet -port <a server port> -maxconnections <max connections> -monitor <ip addr>")
-		logger.Info("-port: a server port (default: 19132)")
-		logger.Info("-maxconnections: max connections of server (default: 15)")
-		logger.Info("-monitor: monitor a IP address (example: 192.168.xx.xx)")
+		logger.Info("Usage: goraknet -p <a server port> -m <max connections> -M <ip addr>")
+		logger.Info("-p: set server's port. (default: 19132)")
+		logger.Info("-m: set server's max connections. (default: 10)")
+		logger.Info("-M: set server's IP address.")
 		return
 	}
 
 	if port < 0 || port > 65535 {
-		logger.Errorln("invaild a port, wants 0-65535")
+		logger.Errorln("invaild a port, the port must be between 0 and 65535")
 		return
 	}
 
@@ -84,7 +84,7 @@ func main() {
 	if len(monitor) > 0 {
 		ip := net.ParseIP(monitor)
 		if ip == nil {
-			logger.Fatal("Failed to parse the monitor IP address")
+			logger.Fatal("Failed to parse the monitor's IP address")
 			return
 		}
 
@@ -108,7 +108,7 @@ func main() {
 
 	logger.Info("Enter to stop the server")
 
-	bufio.NewScanner(os.Stdin).Scan() // wait input anything
+	bufio.NewScanner(os.Stdin).Scan() // wait until any command is executed.
 
 	cancel()
 
