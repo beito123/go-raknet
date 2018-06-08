@@ -15,6 +15,7 @@ import (
 	"github.com/satori/go.uuid"
 
 	"github.com/beito123/go-raknet/server"
+	"github.com/mattn/go-colorable"
 )
 
 func main() {
@@ -22,18 +23,32 @@ func main() {
 		port          int
 		maxConnection int
 		monitor       string
+		help          bool
 	)
 
-	// goraknet -port <server port> -maxconnections <max connections> -monitor <ip>
+	// goraknet -port <server port> -maxconnections <max connections> -monitor <ip addr>
 	flag.IntVar(&port, "port", 19132, "a server port")
 	flag.IntVar(&maxConnection, "maxconnections", 10, "max connections")
 	flag.StringVar(&monitor, "monitor", "", "monitor ip")
+	flag.BoolVar(&help, "help", false, "help")
 	flag.Parse()
 
 	logger := &logrus.Logger{
-		Out:       os.Stdout,
-		Formatter: &logrus.TextFormatter{},
-		Level:     logrus.DebugLevel,
+		Out: colorable.NewColorableStdout(),
+		Formatter: &logrus.TextFormatter{
+			TimestampFormat: "2006-01-02 15:04:05",
+			FullTimestamp:   true,
+			ForceColors:     true,
+		},
+		Level: logrus.DebugLevel,
+	}
+
+	if help {
+		logger.Info("Usage: goraknet -port <a server port> -maxconnections <max connections> -monitor <ip addr>")
+		logger.Info("-port: a server port (default: 19132)")
+		logger.Info("-maxconnections: max connections of server (default: 15)")
+		logger.Info("-monitor: monitor a IP address (example: 192.168.xx.xx)")
+		return
 	}
 
 	if port < 0 || port > 65535 {
