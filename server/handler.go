@@ -25,7 +25,7 @@ type Handler interface {
 	CloseServer()
 
 	// HandlePing is called on a ping packet is received
-	HandlePing(addr net.Addr)
+	HandlePing(addr net.UDPAddr)
 
 	// OpenPreConn is called before a new session is created
 	OpenPreConn(addr net.Addr)
