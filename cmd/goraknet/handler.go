@@ -132,6 +132,7 @@ func getPacketName(pk raknet.Packet) string {
 }
 
 // Thank you : https://stackoverflow.com/questions/35790935/using-reflection-in-go-to-get-the-name-of-a-struct
+// From Stackoverflow author: icza(https://stackoverflow.com/users/1705598/icza), questioner: Daniele D
 func getTypeName(v interface{}) string {
 	if t := reflect.TypeOf(v); t.Kind() == reflect.Ptr {
 		return t.Elem().Name()
