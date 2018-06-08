@@ -2,6 +2,7 @@
 
 ## remove temp files
 *.exe
+*.txt
 
 ## For IntelliJ IDEA
 /.idea/
