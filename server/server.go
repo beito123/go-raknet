@@ -43,7 +43,7 @@ var (
 
 type Server struct {
 	Logger         raknet.Logger
-	Handler        Handler
+	Handler        Handler // TODO: supports multiple handlers
 	MaxConnections int
 	MTU            int
 	Identifier     identifier.Identifier
@@ -195,8 +195,6 @@ func (ser *Server) Serve(ctx context.Context, l *net.UDPConn) error {
 
 		ser.handlePacket(ctx, addr, buf)
 	}
-
-	return nil
 }
 
 func (ser *Server) handlePacket(ctx context.Context, addr *net.UDPAddr, b []byte) {
@@ -209,17 +207,19 @@ func (ser *Server) handlePacket(ctx context.Context, addr *net.UDPAddr, b []byte
 		return
 	}
 
-	ser.Logger.Debug("handle a packet from" + addr.String())
+	ser.Logger.Debug("handle a packet from " + addr.String())
 
 	// new packet
 
 	pk, ok := ser.protocol.Packet(b[0])
 	if !ok {
-		ser.Logger.Warn("unknown packet id:", pk.ID())
+		ser.Logger.Warn("unknown packet id: 0x", pk.ID())
 		return
 	}
 
 	pk.SetBytes(b)
+
+	fmt.Printf("%#v", b)
 
 	switch npk := pk.(type) {
 	case *protocol.UnconnectedPing, *protocol.UnconnectedPingOpenConnections:
@@ -260,8 +260,6 @@ func (ser *Server) handlePacket(ctx context.Context, addr *net.UDPAddr, b []byte
 			ser.Logger.Warn(err)
 			return
 		}
-
-		fmt.Printf("%#v", pong.Bytes())
 
 		ser.SendPacket(addr, pong)
 
@@ -580,7 +578,7 @@ func (ser *Server) SendPacket(addr *net.UDPAddr, pk raknet.Packet) {
 }
 
 func (ser *Server) SendRawPacket(addr *net.UDPAddr, b []byte) {
-	go func() {
+	go func() { // TODO: rewrite
 		ser.conn.WriteToUDP(b, addr)
 	}()
 }
