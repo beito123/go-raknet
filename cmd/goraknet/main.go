@@ -21,11 +21,13 @@ func main() {
 	var (
 		port          int
 		maxConnection int
+		monitor       string
 	)
 
-	// goraknet -port <server port> -maxconnections <max connections>
+	// goraknet -port <server port> -maxconnections <max connections> -monitor <ip>
 	flag.IntVar(&port, "port", 19132, "a server port")
 	flag.IntVar(&maxConnection, "maxconnections", 10, "max connections")
+	flag.StringVar(&monitor, "monitor", "", "monitor ip")
 	flag.Parse()
 
 	logger := &logrus.Logger{
@@ -41,6 +43,7 @@ func main() {
 
 	uid, _ := uuid.NewV4()
 
+	// For MCBE server
 	id := identifier.Minecraft{
 		Connection:        &raknet.ConnectionGoRaknet,
 		ServerName:        "Go-Raknet server",
@@ -61,6 +64,19 @@ func main() {
 		Identifier:          id,
 		UUID:                uid,
 		BroadcastingEnabled: true,
+	}
+
+	if len(monitor) > 0 {
+		ip := net.ParseIP(monitor)
+		if ip == nil {
+			logger.Fatal("Failed to parse the monitor IP address")
+			return
+		}
+
+		ser.Handler = &MonitorHandler{
+			MonitorIP: ip,
+			Path:      "./",
+		}
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
