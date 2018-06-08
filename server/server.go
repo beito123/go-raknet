@@ -572,6 +572,10 @@ func (ser *Server) CloseSessionGUID(guid int64, reason string) error {
 }
 
 func (ser *Server) SendPacket(addr *net.UDPAddr, pk raknet.Packet) {
+	if ser.Handler != nil {
+		ser.Handler.HandleSendPacket(addr, pk) // ummm...
+	}
+
 	ser.SendRawPacket(addr, pk.Bytes())
 }
 
