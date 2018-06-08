@@ -29,7 +29,7 @@ func (hand *MonitorHandler) StartServer() {
 		panic("Couldn't create a file")
 	}
 
-	file.WriteString("# Monitor TargetIP:" + hand.MonitorIP.String() + " #" + time.Now().Format(time.UnixDate) + "\n\n")
+	file.WriteString("## Monitor Target IP: " + hand.MonitorIP.String() + " Time: " + time.Now().Format(time.UnixDate) + "\n\n")
 
 	hand.stopped = make(chan bool)
 
