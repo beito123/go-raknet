@@ -1,10 +1,10 @@
-# go-raknet
+# Go-raknet
 
-go-raknet is Raknet library for Medaka written in Go.
+Go-raknet is Raknet library for Medaka written in Go.
 
-The almost codes are based on [JRaknet](https://github.com/JRakNet/JRakNet) (by [JRaknet-Team](https://github.com/JRakNet) and [Whirvis](https://github.com/Whirvis)).
+Most of the codes are based on [JRaknet](https://github.com/JRakNet/JRakNet) (by [JRaknet-Team](https://github.com/JRakNet) and [Whirvis](https://github.com/Whirvis)).
 
-This project is not related to Jenkins Software LLC and Oculus.
+This project is not related to Jenkins Software LLC nor Oculus.
 
 ## License
 
