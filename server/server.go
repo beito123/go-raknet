@@ -41,13 +41,17 @@ var (
 	errInvalidMaxAsyncTaskCount = errors.New("invalid max async task count")
 )
 
+type Handlers []Handler
+
 type Server struct {
-	Logger         raknet.Logger
-	Handler        Handler // TODO: supports multiple handlers
+	Logger         utils.Logger
+	Handlers        Handlers
 	MaxConnections int
 	MTU            int
 	Identifier     identifier.Identifier
 	protocol       *protocol.Protocol
+
+	cancel         context.CancelFunc
 
 	UUID uuid.UUID
 
@@ -63,6 +67,21 @@ type Server struct {
 
 	sessions         cmap.ConcurrentMap
 	blockedAddresses cmap.ConcurrentMap
+}
+
+func (s *Server) Cancel() context.CancelFunc {
+	return s.cancel
+}
+
+func (s *Server) SetCancel(cancel context.CancelFunc) {
+	s.cancel = cancel
+}
+
+func (s *Server) Shutdown() {
+	if s.IsRunning() {
+		f := s.Cancel()
+		f()
+	}
 }
 
 func (ser *Server) State() ServerState {
@@ -93,6 +112,12 @@ func (ser *Server) init() {
 	if ser.MTU < raknet.MinMTU || ser.MTU > raknet.MaxMTU {
 		ser.MTU = raknet.MaxMTU
 	}
+}
+
+func (ser *Server) Start(ip string, port int) {
+	ctx,cancel := context.WithCancel(context.Background())
+	ser.SetCancel(cancel)
+	go ser.ListenAndServe(ctx, &net.UDPAddr{IP:net.ParseIP(ip), Port:port,})
 }
 
 func (ser *Server) ListenAndServe(ctx context.Context, addr *net.UDPAddr) error {
@@ -135,8 +160,8 @@ func (ser *Server) Serve(ctx context.Context, l *net.UDPConn) error {
 			ser.Logger.Warn(err)
 		}
 
-		if ser.Handler != nil {
-			ser.Handler.CloseServer()
+		for _,handler := range ser.Handlers {
+			handler.CloseServer()
 		}
 	}()
 
@@ -167,8 +192,8 @@ func (ser *Server) Serve(ctx context.Context, l *net.UDPConn) error {
 		}
 	}()
 
-	if ser.Handler != nil {
-		ser.Handler.StartServer()
+	for _,handler := range ser.Handlers {
+		handler.StartServer()
 	}
 
 	// Reads packets from udp socket, and handles them
@@ -244,10 +269,6 @@ func (ser *Server) handlePacket(ctx context.Context, addr *net.UDPAddr, b []byte
 			return
 		}
 
-		if ser.Handler != nil {
-			ser.Handler.HandlePing(addr) // ummm..., should support changing by handler...?
-		}
-
 		pong := &protocol.UnconnectedPong{
 			Timestamp:  ping.Timestamp,
 			PongID:     ser.pongid,
@@ -261,16 +282,11 @@ func (ser *Server) handlePacket(ctx context.Context, addr *net.UDPAddr, b []byte
 			return
 		}
 
+		fmt.Printf("%#v", pong.Bytes())
+
 		ser.SendPacket(addr, pong)
 
 		return
-	}
-
-	if ser.Handler != nil {
-		ser.Handler.HandleRawPacket(addr, pk)
-	}
-
-	switch npk := pk.(type) {
 	case *protocol.OpenConnectionRequestOne:
 		err := npk.Decode()
 		if err != nil {
@@ -394,10 +410,6 @@ func (ser *Server) handlePacket(ctx context.Context, addr *net.UDPAddr, b []byte
 		ser.storeSession(addr, session)
 
 		ser.SendPacket(addr, rpk)
-
-		if ser.Handler != nil {
-			ser.Handler.OpenConn(session.GUID, addr)
-		}
 
 		return
 	}
@@ -570,15 +582,11 @@ func (ser *Server) CloseSessionGUID(guid int64, reason string) error {
 }
 
 func (ser *Server) SendPacket(addr *net.UDPAddr, pk raknet.Packet) {
-	if ser.Handler != nil {
-		ser.Handler.HandleSendPacket(addr, pk) // ummm...
-	}
-
 	ser.SendRawPacket(addr, pk.Bytes())
 }
 
 func (ser *Server) SendRawPacket(addr *net.UDPAddr, b []byte) {
-	go func() { // TODO: rewrite
+	go func() {  // TODO: rewrite
 		ser.conn.WriteToUDP(b, addr)
 	}()
 }
@@ -615,3 +623,4 @@ func equalUDPAddr(a *net.UDPAddr, b *net.UDPAddr) bool {
 
 	return false
 }
+
