@@ -48,7 +48,7 @@ type Server struct {
 	Handlers        Handlers
 	MaxConnections int
 	MTU            int
-	Identifier     identifier.Minecraft
+	Identifier     identifier.Identifier
 	protocol       *protocol.Protocol
 
 	cancel         context.CancelFunc
