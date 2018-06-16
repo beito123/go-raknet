@@ -88,10 +88,10 @@ func main() {
 			return
 		}
 
-		ser.Handler = &MonitorHandler{
+		ser.Handlers = append(ser.Handlers, &MonitorHandler{
 			MonitorIP: ip,
 			Path:      "./",
-		}
+		})
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
