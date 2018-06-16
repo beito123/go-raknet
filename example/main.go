@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"context"
 	"flag"
 	"net"
 	"os"
@@ -52,7 +51,7 @@ func main() {
 	}
 
 	if port < 0 || port > 65535 {
-		logger.Errorln("invaild a port, the port must be between 0 and 65535")
+		logger.Errorln("invaild a port, it must be between 0 and 65535")
 		return
 	}
 
@@ -62,7 +61,7 @@ func main() {
 	id := identifier.Minecraft{
 		Connection:        &raknet.ConnectionGoRaknet,
 		ServerName:        "Go-Raknet server",
-		ServerProtocol:    raknet.NetworkProtocol,
+		ServerProtocol:    280,
 		VersionTag:        "1.0.0",
 		OnlinePlayerCount: 0,
 		MaxPlayerCount:    maxConnection,
@@ -90,27 +89,20 @@ func main() {
 
 		ser.Handlers = append(ser.Handlers, &MonitorHandler{
 			MonitorIP: ip,
-			Path:      "./",
+			Path:      "./monitor.txt",
 		})
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-
 	logger.Info("Starting the server...")
-	logger.Debug("ip: 0.0.0.0, port:" + strconv.Itoa(port))
+	logger.Debug("address: 0.0.0.0:" + strconv.Itoa(port))
 
-	addr := &net.UDPAddr{
-		IP:   net.ParseIP("0.0.0.0"),
-		Port: port,
-	}
-
-	go ser.ListenAndServe(ctx, addr)
+	go ser.Start("0.0.0.0", port)
 
 	logger.Info("Enter to stop the server")
 
 	bufio.NewScanner(os.Stdin).Scan() // wait until any command is executed.
 
-	cancel()
-
 	logger.Info("Stopping the server...")
+
+	ser.Shutdown()
 }
