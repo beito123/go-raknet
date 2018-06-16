@@ -389,7 +389,7 @@ func (pk *OpenConnectionRequestOne) Decode() error {
 
 	pk.Magic = pk.CheckMagic()
 
-	err = pk.PutByte(pk.ProtocolVersion)
+	pk.ProtocolVersion, err = pk.Byte()
 	if err != nil {
 		return err
 	}
