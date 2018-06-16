@@ -51,7 +51,7 @@ type Server struct {
 	Identifier     identifier.Identifier
 	protocol       *protocol.Protocol
 
-	cancel         context.CancelFunc
+	cancel context.CancelFunc
 
 	UUID uuid.UUID
 
@@ -115,9 +115,9 @@ func (ser *Server) init() {
 }
 
 func (ser *Server) Start(ip string, port int) {
-	ctx,cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	ser.SetCancel(cancel)
-	go ser.ListenAndServe(ctx, &net.UDPAddr{IP:net.ParseIP(ip), Port:port,})
+	go ser.ListenAndServe(ctx, &net.UDPAddr{IP: net.ParseIP(ip), Port: port})
 }
 
 func (ser *Server) ListenAndServe(ctx context.Context, addr *net.UDPAddr) error {
@@ -160,7 +160,7 @@ func (ser *Server) Serve(ctx context.Context, l *net.UDPConn) error {
 			ser.Logger.Warn(err)
 		}
 
-		for _,handler := range ser.Handlers {
+		for _, handler := range ser.Handlers {
 			handler.CloseServer()
 		}
 	}()
@@ -192,7 +192,7 @@ func (ser *Server) Serve(ctx context.Context, l *net.UDPConn) error {
 		}
 	}()
 
-	for _,handler := range ser.Handlers {
+	for _, handler := range ser.Handlers {
 		handler.StartServer()
 	}
 
@@ -243,8 +243,6 @@ func (ser *Server) handlePacket(ctx context.Context, addr *net.UDPAddr, b []byte
 	}
 
 	pk.SetBytes(b)
-
-	fmt.Printf("%#v", b)
 
 	switch npk := pk.(type) {
 	case *protocol.UnconnectedPing, *protocol.UnconnectedPingOpenConnections:
@@ -593,7 +591,7 @@ func (ser *Server) SendPacket(addr *net.UDPAddr, pk raknet.Packet) {
 }
 
 func (ser *Server) SendRawPacket(addr *net.UDPAddr, b []byte) {
-	go func() {  // TODO: rewrite
+	go func() { // TODO: rewrite
 		ser.conn.WriteToUDP(b, addr)
 	}()
 }
@@ -630,4 +628,3 @@ func equalUDPAddr(a *net.UDPAddr, b *net.UDPAddr) bool {
 
 	return false
 }
-
