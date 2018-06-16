@@ -4,6 +4,9 @@
 *.exe
 *.txt
 
+# Remove vendor dir
+/vendor/
+
 ## For IntelliJ IDEA
 /.idea/
 
