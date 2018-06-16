@@ -44,8 +44,8 @@ var (
 type Handlers []Handler
 
 type Server struct {
-	Logger         utils.Logger
-	Handlers        Handlers
+	Logger         raknet.Logger
+	Handlers       Handlers
 	MaxConnections int
 	MTU            int
 	Identifier     identifier.Identifier
