@@ -1,0 +1,15 @@
+language: go
+
+go:
+  - "1.10.x"
+
+install: true
+
+before_script:
+  - go get -u golang.org/x/tools/cmd/goimports
+#  - go get -u github.com/golang/lint/golint
+
+script:
+  - go vet ./...
+  - diff <(goimports -d .) <(printf "")
+#  - diff <(golint ./...) <(printf "")
