@@ -153,12 +153,12 @@ func (session *Session) handlePacket(pk raknet.Packet) {
 		session.Server.CloseSession(session.Addr, "Server disconnected")
 	default:
 		if npk.ID() >= protocol.IDUserPacketEnum { // user packet
-			if session.Server.Handler != nil {
-				session.Server.Handler.HandlePacket(session.GUID, npk)
+			for _, hand := range session.Server.Handlers {
+				hand.HandlePacket(session.GUID, npk)
 			}
 		} else { // unknown packet
-			if session.Server.Handler != nil {
-				session.Server.Handler.HandleUnknownPacket(session.GUID, npk)
+			for _, hand := range session.Server.Handlers {
+				hand.HandleUnknownPacket(session.GUID, npk)
 			}
 		}
 	}
@@ -169,8 +169,8 @@ func (session *Session) handleCustomPacket(pk *protocol.CustomPacket) {
 		return
 	}
 
-	if session.Server.Handler != nil {
-		session.Server.Handler.HandlePacket(session.GUID, pk)
+	for _, hand := range session.Server.Handlers { // Debug: I'll remove
+		hand.HandlePacket(session.GUID, pk)
 	}
 
 }
