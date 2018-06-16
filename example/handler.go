@@ -11,6 +11,7 @@ import (
 	raknet "github.com/beito123/go-raknet"
 )
 
+// MonitorHandler is a simple monitor handler
 type MonitorHandler struct {
 	MonitorIP net.IP
 	Path      string
@@ -22,9 +23,7 @@ type MonitorHandler struct {
 
 // StartServer is called on the server is started
 func (hand *MonitorHandler) StartServer() {
-	path := hand.Path + "/monitor.txt"
-
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY /*|os.O_APPEND*/, 0666)
+	file, err := os.OpenFile(hand.Path, os.O_CREATE|os.O_WRONLY /*|os.O_APPEND*/, 0666)
 	if err != nil {
 		panic("Couldn't create a file")
 	}
