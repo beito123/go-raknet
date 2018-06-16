@@ -287,6 +287,13 @@ func (ser *Server) handlePacket(ctx context.Context, addr *net.UDPAddr, b []byte
 		ser.SendPacket(addr, pong)
 
 		return
+	}
+
+	for _, hand := range ser.Handlers {
+		hand.HandleRawPacket(addr, pk)
+	}
+
+	switch npk := pk.(type) {
 	case *protocol.OpenConnectionRequestOne:
 		err := npk.Decode()
 		if err != nil {
