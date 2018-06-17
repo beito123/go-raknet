@@ -74,7 +74,7 @@ func main() {
 	ser := &server.Server{
 		Logger:              logger,
 		MaxConnections:      maxConnection,
-		MTU:                 1472,
+		MTU:                 2048, //Minecraft default MTU
 		Identifier:          id,
 		UUID:                uid,
 		BroadcastingEnabled: true,

@@ -44,12 +44,13 @@ var (
 type Handlers []Handler
 
 type Server struct {
-	Logger         raknet.Logger
-	Handlers       Handlers
-	MaxConnections int
-	MTU            int
-	Identifier     identifier.Identifier
-	protocol       *protocol.Protocol
+	Logger          raknet.Logger
+	Handlers        Handlers
+	MaxConnections  int
+	MTU             int
+	Identifier      identifier.Identifier
+	NetworkProtocol int
+	protocol        *protocol.Protocol
 
 	cancel context.CancelFunc
 
@@ -109,7 +110,7 @@ func (ser *Server) init() {
 	ser.pongid = binary.ReadLong(ser.UUID.Bytes()[8:16])
 
 	//if no set, set default
-	if ser.MTU < raknet.MinMTU || ser.MTU > raknet.MaxMTU {
+	if ser.MTU < raknet.MinMTU {
 		ser.MTU = raknet.MaxMTU
 	}
 }
@@ -321,10 +322,10 @@ func (ser *Server) handlePacket(ctx context.Context, addr *net.UDPAddr, b []byte
 			return
 		}
 
-		if npk.ProtocolVersion != raknet.NetworkProtocol {
+		if int(npk.ProtocolVersion) != ser.NetworkProtocol {
 			rpk := &protocol.IncompatibleProtocol{}
 
-			rpk.NetworkProtocol = raknet.NetworkProtocol
+			rpk.NetworkProtocol = byte(ser.NetworkProtocol)
 			rpk.ServerGuid = ser.uid
 
 			err = rpk.Encode()
@@ -334,10 +335,16 @@ func (ser *Server) handlePacket(ctx context.Context, addr *net.UDPAddr, b []byte
 			}
 
 			ser.SendPacket(addr, rpk)
+
+			ser.Logger.Debug("Invalid connection with an incompatible network protocol.",
+				" client: ", npk.ProtocolVersion, " server: ", ser.NetworkProtocol)
+
 			return
 		}
 
-		if npk.MTU > raknet.MaxMTU {
+		if npk.MTU > ser.MTU {
+			ser.Logger.Debug("Invalid connection with over server MTU.",
+				" client: ", npk.MTU, " server:", ser.MTU)
 			return
 		}
 
@@ -385,7 +392,7 @@ func (ser *Server) handlePacket(ctx context.Context, addr *net.UDPAddr, b []byte
 			return
 		}
 
-		if npk.MTU > raknet.MaxMTU {
+		if int(npk.MTU) > ser.MTU {
 			return
 		}
 
@@ -587,6 +594,10 @@ func (ser *Server) CloseSessionGUID(guid int64, reason string) error {
 }
 
 func (ser *Server) SendPacket(addr *net.UDPAddr, pk raknet.Packet) {
+	for _, handler := range ser.Handlers { // For debug
+		handler.HandleSendPacket(addr, pk)
+	}
+
 	ser.SendRawPacket(addr, pk.Bytes())
 }
 
