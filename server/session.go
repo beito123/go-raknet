@@ -169,8 +169,8 @@ func (session *Session) handleCustomPacket(pk *protocol.CustomPacket) {
 		return
 	}
 
-	for _, hand := range session.Server.Handlers { // Debug: I'll remove
-		hand.HandlePacket(session.GUID, pk)
+	for _, handler := range session.Server.Handlers { // Debug: I'll remove
+		handler.HandlePacket(session.GUID, pk)
 	}
 
 }
