@@ -401,6 +401,7 @@ func (ser *Server) handlePacket(ctx context.Context, addr *net.UDPAddr, b []byte
 		rpk.ClientAddress = ser.newSystemAddress(addr)
 		rpk.MTU = npk.MTU
 		rpk.EncrtptionEnabled = false
+		rpk.Connection = ser.Identifier.ConnectionType()
 
 		err = rpk.Encode()
 		if err != nil {
@@ -416,6 +417,7 @@ func (ser *Server) handlePacket(ctx context.Context, addr *net.UDPAddr, b []byte
 			Logger: ser.Logger,
 			MTU:    ser.MTU,
 			State:  StateHandshaking,
+			Server: ser,
 			ctx:    ctx,
 		}
 
