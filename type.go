@@ -1,44 +1,20 @@
 package raknet
 
+/*
+ * go-raknet
+ *
+ * Copyright (c) 2018 beito
+ *
+ * This software is released under the MIT License.
+ * http://opensource.org/licenses/mit-license.php
+ */
+
 import (
 	"net"
 	"strconv"
 
 	"github.com/satori/go.uuid"
 )
-
-/*
-	Logger
-*/
-
-// Logger is a supported logger in Raknet server
-type Logger interface {
-	Info(msg ...interface{})
-	Warn(msg ...interface{})
-	Fatal(msg ...interface{})
-	Debug(msg ...interface{})
-}
-
-/*
-	RaknetProtocol Interface
-*/
-
-// Packet is a basic packet
-type Packet interface {
-	ID() byte
-	Encode() error
-	Decode() error
-	Bytes() []byte
-	SetBytes([]byte)
-	New() Packet
-}
-
-// Protocol is a packet protocol
-type Protocol interface {
-	RegisterPackets()
-	Packet(id byte) Packet
-	Packets() []Packet
-}
 
 /*
 	ConnectionType
