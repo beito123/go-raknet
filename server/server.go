@@ -191,6 +191,13 @@ func (ser *Server) Serve(ctx context.Context, l *net.UDPConn) error {
 				break
 			}
 		}
+
+		// Close sessions
+		ser.RangeSessions(func(key string, session *Session) bool {
+			ser.removeSession(session.Addr)
+			
+			return true
+		})
 	}()
 
 	for _, handler := range ser.Handlers {
