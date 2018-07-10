@@ -275,6 +275,10 @@ func (ser *Server) handlePacket(ctx context.Context, addr *net.UDPAddr, b []byte
 			return
 		}
 
+		for _, handler := range ser.Handlers {
+			handler.HandlePing(addr)
+		}
+
 		pong := &protocol.UnconnectedPong{
 			Timestamp:  ping.Timestamp,
 			PongID:     ser.pongid,
@@ -415,7 +419,9 @@ func (ser *Server) handlePacket(ctx context.Context, addr *net.UDPAddr, b []byte
 			return
 		}
 
-		// handler: pre connect
+		for _, handler := range ser.Handlers {
+			handler.OpenPreConn(addr)
+		}
 
 		session := &Session{
 			Addr:   addr,

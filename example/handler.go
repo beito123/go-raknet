@@ -87,10 +87,32 @@ func (hand *MonitorHandler) CloseConn(uid int64) {
 
 		delete(hand.targets, uid)
 	}
+}	
+
+// Timeout is called when a client is timed out
+func (hand *MonitorHandler) Timeout(uid int64) {
+	if hand.IsTarget(uid) {
+		hand.out <- "# The session timed out"
+	}
+}
+
+// BlockedAddress is called when a client is added blocked address
+func (hand *MonitorHandler) AddBlockedAddress(ip net.IP, reason string) {
+	if hand.IsTargetIP(ip) {
+		hand.out <- "# Added the target ip to blocked address"
+	}
+}
+
+// BlockedAddress is called when a client is removed blocked address
+func (hand *MonitorHandler) RemoveBlockedAddress(ip net.IP, reason string) {
+	if hand.IsTargetIP(ip) {
+		hand.out <- "# Removed the target ip from blocked address"
+	}
 }
 
 func (hand *MonitorHandler) HandleSendPacket(addr net.Addr, pk raknet.Packet) {
 	if hand.IsTargetAddr(addr) {
+		hand.out <- "HandleSendPacket: \n"
 		hand.out <- hand.dump("Server", "Client", getPacketName(pk), pk.Bytes())
 	}
 }
@@ -98,18 +120,25 @@ func (hand *MonitorHandler) HandleSendPacket(addr net.Addr, pk raknet.Packet) {
 // HandleRawPacket handles a raw packet no processed in Raknet server
 func (hand *MonitorHandler) HandleRawPacket(addr net.Addr, pk raknet.Packet) {
 	if hand.IsTargetAddr(addr) {
+		hand.out <- "HandleRawPacket: \n"
 		hand.out <- hand.dump("Client", "Server", getPacketName(pk), pk.Bytes())
 	}
 }
 
 // HandlePacket handles a message packet
 func (hand *MonitorHandler) HandlePacket(uid int64, pk raknet.Packet) {
-	hand.out <- hand.dump("Client", "Server", getPacketName(pk), pk.Bytes())
+	if hand.IsTarget(uid) {
+		hand.out <- "HandlePacket: \n"
+		hand.out <- hand.dump("Client", "Server", getPacketName(pk), pk.Bytes())
+	}
 }
 
 // HandleUnknownPacket handles a unknown packet
 func (hand *MonitorHandler) HandleUnknownPacket(uid int64, pk raknet.Packet) {
-	hand.out <- hand.dump("Client", "Server", getPacketName(pk), pk.Bytes())
+	if hand.IsTarget(uid) {
+		hand.out <- "HandleUnknownPacket: \n"
+		hand.out <- hand.dump("Client", "Server", getPacketName(pk), pk.Bytes())
+	}
 }
 
 func (hand *MonitorHandler) IsTarget(uid int64) bool {
@@ -123,7 +152,12 @@ func (hand *MonitorHandler) IsTargetAddr(addr net.Addr) bool {
 		return false
 	}
 
-	return hand.MonitorIP.Equal(naddr.IP)
+	return hand.IsTargetIP(naddr.IP)
+}
+
+
+func (hand *MonitorHandler) IsTargetIP(ip net.IP) bool {
+	return hand.MonitorIP.Equal(ip)
 }
 
 func getPacketName(pk raknet.Packet) string {
