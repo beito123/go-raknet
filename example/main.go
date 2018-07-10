@@ -78,6 +78,7 @@ func main() {
 		Identifier:          id,
 		UUID:                uid,
 		BroadcastingEnabled: true,
+		NetworkProtocol:     9, // For Minecraft
 	}
 
 	if len(monitor) > 0 {
