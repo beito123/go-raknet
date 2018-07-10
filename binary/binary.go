@@ -34,33 +34,30 @@ func ToTriad(a int) Triad {
 }
 
 // Triad is 3bytes data for Raknet
-// Using index counter in Raknet
+// It's used as index counter in Raknet
 type Triad uint32
 
 func (t Triad) Bump() Triad {
-	if t >= MaxTriad {
-		return 0
-	}
-
-	return t + 1
+	return (t % MaxTriad) + 1
 }
 
-func (t Triad) Plus(d int) (result Triad) {
+func (t Triad) Add(d int) (result Triad) {
 	result = t + Triad(d)
-	if result > MaxTriad {
+
+	if !t.Vaild() {
 		panic("constant" + strconv.Itoa(int(result)) + "overflows Triad")
 	}
 
 	return result
 }
 
-func (t Triad) Minus(d int) Triad {
-	return t.Plus(-d)
+func (t Triad) Sub(d int) Triad {
+	return t.Add(-d)
 }
 
 func (t Triad) Multi(d int) (result Triad) {
 	result = t * ToTriad(d)
-	if result > MaxTriad {
+	if !t.Vaild() {
 		panic("constant" + strconv.Itoa(int(result)) + "overflows Triad")
 	}
 
@@ -69,24 +66,24 @@ func (t Triad) Multi(d int) (result Triad) {
 
 func (t Triad) Divide(d int) (result Triad) {
 	result = t / ToTriad(d)
-	if result > MaxTriad {
+	if !t.Vaild() {
 		panic("constant" + strconv.Itoa(int(result)) + "overflows Triad")
 	}
 
 	return result
 }
 
-func (t Triad) Remainder(d int) Triad {
-	f := t % ToTriad(d)
-	if f > MaxTriad {
+func (t Triad) Remainder(d int) (result Triad) {
+	result = t % ToTriad(d)
+	if !t.Vaild() {
 		return 0
 	}
 
-	return f
+	return result
 }
 
 func (t Triad) Vaild() bool {
-	return t <= MaxTriad
+	return t >= MinTriad && t <= MaxTriad
 }
 
 // ReadTriad read Triad value
