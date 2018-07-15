@@ -559,9 +559,9 @@ func (session *Session) SendPacket(pk raknet.Packet, reliability raknet.Reliabil
 
 	if reliability.IsOrdered() || reliability.IsSequenced() {
 		if reliability.IsOrdered() {
-			epk.OrderIndex = session.bumpSequenceSendIndex(channel)
-		} else {
 			epk.OrderIndex = session.bumpOrderSendIndex(channel)
+		} else {
+			epk.OrderIndex = session.bumpSequenceSendIndex(channel)
 		}
 
 		//session.Logger.Debug("Bumped" + )
@@ -763,6 +763,7 @@ func (session *Session) Close() error {
 	session.State = StateDisconected
 
 	// send a disconnection notification packet
+	session.SendPacket(&protocol.DisconnectionNotification{}, raknet.Unreliable, 0)
 
 	return nil
 }
