@@ -176,7 +176,7 @@ func (session *Session) Init() {
 	session.LastPacketCounterResetTime = time.Now()
 }
 
-func (session *Session) handlePacket(pk raknet.Packet) {
+func (session *Session) handlePacket(pk raknet.Packet, channel int) {
 	if session.State == StateDisconected {
 		return
 	}
@@ -199,7 +199,7 @@ func (session *Session) handlePacket(pk raknet.Packet) {
 			return
 		}
 
-		_, err = session.SendPacket(pong, raknet.Unreliable, raknet.DefaultChannel)
+		_, err = session.SendPacket(pong, raknet.Unreliable, channel)
 		if err != nil {
 			session.Logger.Warn(err)
 		}
@@ -233,6 +233,7 @@ func (session *Session) handlePacket(pk raknet.Packet) {
 		}
 
 		_, err = session.SendPacket(hpk, raknet.ReliableOrderedWithACKReceipt, raknet.DefaultChannel)
+		epk, err := session.SendPacket(hpk, raknet.ReliableOrderedWithACKReceipt, channel)
 		if err != nil {
 			session.Server.CloseSession(session.Addr, "Failed to login")
 		}
