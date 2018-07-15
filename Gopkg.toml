@@ -34,10 +34,6 @@
   version = "2.0.0"
 
 [[constraint]]
-  branch = "master"
-  name = "github.com/damnever/goqueue"
-
-[[constraint]]
   name = "github.com/mattn/go-colorable"
   version = "0.0.9"
 
