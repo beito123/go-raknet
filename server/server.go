@@ -183,6 +183,13 @@ func (ser *Server) Serve(ctx context.Context, l *net.UDPConn) error {
 					ser.removeSession(session.Addr)
 				}
 
+				if session.PacketReceivedCount >= raknet.MaxPacketsPerSecond {
+					ser.SetBlockedAddress(session.Addr.IP, &Expire{
+						Time:     time.Now(),
+						Duration: raknet.MaxPacketsPerSecondBlock,
+					}, "Too many packets")
+				}
+
 				return true
 			})
 
@@ -625,7 +632,11 @@ func (ser *Server) HasBlockedAddress(ip net.IP) bool {
 	return ser.blockedAddresses.Has(ip.String())
 }
 
-func (ser *Server) SetBlockedAddress(ip net.IP, exp Expire) {
+func (ser *Server) SetBlockedAddress(ip net.IP, exp *Expire, reason string) {
+	for _, handler := range ser.Handlers {
+		handler.AddBlockedAddress(ip, reason)
+	}
+
 	ser.blockedAddresses.Set(ip.String(), exp)
 }
 
