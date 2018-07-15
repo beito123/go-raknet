@@ -16,46 +16,40 @@ import (
 	"github.com/beito123/go-raknet/binary"
 )
 
-type ACK struct {
-	Acknowledge
-}
+type ACKType int
 
-func (ACK) ID() byte {
-	return IDACK
-}
-
-func (pk *ACK) Encode() error {
-	return pk.Acknowledge.Encode(pk)
-}
-
-func (pk *ACK) Decode() error {
-	return pk.Acknowledge.Decode(pk)
-}
-
-func (ACK) New() raknet.Packet {
-	return new(ACK)
-}
-
-type NACK struct {
-	ACK
-}
-
-func (NACK) ID() byte {
-	return IDNACK
-}
-
-func (NACK) New() raknet.Packet {
-	return new(NACK)
-}
+const (
+	TypeACK ACKType = iota
+	TypeNACK
+)
 
 type Acknowledge struct {
 	BasePacket
 
-	Records []raknet.Record
+	Type ACKType
+
+	Records []*raknet.Record
 }
 
-func (ack *Acknowledge) Encode(pk raknet.Packet) error {
-	err := ack.BasePacket.Encode(pk)
+func (ack *Acknowledge) ID() byte {
+	switch ack.Type {
+	case TypeACK:
+		return IDACK
+	case TypeNACK:
+		return IDNACK
+	}
+
+	return 0xff
+}
+
+func (ack *Acknowledge) New() raknet.Packet {
+	return &Acknowledge{
+		Type: ack.Type,
+	}
+}
+
+func (ack *Acknowledge) Encode() error {
+	err := ack.BasePacket.Encode(ack)
 	if err != nil {
 		return err
 	}
@@ -91,8 +85,8 @@ func (ack *Acknowledge) Encode(pk raknet.Packet) error {
 	return nil
 }
 
-func (ack *Acknowledge) Decode(pk raknet.Packet) error {
-	err := ack.BasePacket.Decode(pk)
+func (ack *Acknowledge) Decode() error {
+	err := ack.BasePacket.Decode(ack)
 	if err != nil {
 		return err
 	}
@@ -102,7 +96,7 @@ func (ack *Acknowledge) Decode(pk raknet.Packet) error {
 		return err
 	}
 
-	ack.Records = []raknet.Record{}
+	ack.Records = []*raknet.Record{}
 	for i := 0; i < int(recLen); i++ {
 		noRange, err := ack.Bool()
 		if err != nil {
@@ -122,7 +116,7 @@ func (ack *Acknowledge) Decode(pk raknet.Packet) error {
 			}
 		}
 
-		ack.Records = append(ack.Records, raknet.Record{
+		ack.Records = append(ack.Records, &raknet.Record{
 			Index:    int(index),
 			EndIndex: int(endIndex),
 		})
@@ -135,7 +129,7 @@ func (ack *Acknowledge) Decode(pk raknet.Packet) error {
 
 // CondenseRecords returns condensed records.
 // For example (No need sort): [0, 2, 3, 5, 8, 9, 10, 15] -> [0, [2:3], 5, [8:10], 15]
-func CondenseRecords(records []raknet.Record) []raknet.Record {
+func CondenseRecords(records []*raknet.Record) []*raknet.Record {
 	var ids []int
 	for _, record := range records {
 		ids = append(ids, record.Numbers()...)
@@ -145,7 +139,7 @@ func CondenseRecords(records []raknet.Record) []raknet.Record {
 
 	ln := len(ids)
 
-	var nRecords []raknet.Record
+	var nRecords []*raknet.Record
 	for i := 0; i < ln; i++ {
 		rec := ids[i]
 		last := rec
@@ -164,11 +158,11 @@ func CondenseRecords(records []raknet.Record) []raknet.Record {
 		end := last
 
 		if rec == end { // no ranged
-			nRecords = append(nRecords, raknet.Record{
+			nRecords = append(nRecords, &raknet.Record{
 				Index: rec,
 			})
 		} else { // ranged
-			nRecords = append(nRecords, raknet.Record{
+			nRecords = append(nRecords, &raknet.Record{
 				Index:    rec,
 				EndIndex: end,
 			})
@@ -178,17 +172,17 @@ func CondenseRecords(records []raknet.Record) []raknet.Record {
 	return nRecords
 }
 
-func simplifyRecords(records []raknet.Record) []raknet.Record {
+func simplifyRecords(records []*raknet.Record) []*raknet.Record {
 	var ids []int
 	for _, rec := range records {
 		ids = append(ids, rec.Numbers()...)
 	}
 
-	var recs []raknet.Record
-	for _, rec := range ids {
-		recs = append(recs, raknet.Record{
-			Index: rec,
-		})
+	recs := make([]*raknet.Record, len(ids))
+	for i := 0; i < len(ids); i++ {
+		recs[i] = &raknet.Record{
+			Index: ids[i],
+		}
 	}
 
 	return recs

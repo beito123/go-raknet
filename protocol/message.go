@@ -47,6 +47,8 @@ type EncapsulatedPacket struct {
 	SplitIndex   int32
 
 	Payload []byte
+
+	Record *raknet.Record
 }
 
 func (epk *EncapsulatedPacket) Encode() error {
@@ -200,7 +202,7 @@ func CalcEPacketSize(reliability raknet.Reliability, split bool, payload []byte)
 	return size
 }
 
-func NewCustomPacket(id byte) raknet.Packet {
+func NewCustomPacket(id byte) *CustomPacket {
 	return &CustomPacket{
 		id: id,
 	}
@@ -213,6 +215,8 @@ type CustomPacket struct {
 
 	Index    binary.Triad
 	Messages []*EncapsulatedPacket
+
+	Records []*raknet.Record
 }
 
 func (pk *CustomPacket) ID() byte {
@@ -232,6 +236,14 @@ func (pk *CustomPacket) Encode() error {
 
 	for _, epk := range pk.Messages {
 		epk.Buf = &pk.RaknetStream
+
+		if epk.Reliability.IsNeededACK() {
+			epk.Record = &raknet.Record{
+				Index: int(pk.Index),
+			}
+
+			pk.Records = append(pk.Records, epk.Record)
+		}
 
 		err = epk.Encode()
 		if err != nil {
@@ -263,10 +275,30 @@ func (pk *CustomPacket) Decode() error {
 			return err
 		}
 
+		if epk.Reliability.IsNeededACK() {
+			epk.Record = &raknet.Record{
+				Index: int(pk.Index),
+			}
+
+			pk.Records = append(pk.Records, epk.Record)
+		}
+
 		pk.Messages = append(pk.Messages, epk)
 	}
 
 	return nil
+}
+
+func (pk *CustomPacket) RemoveUnreliables() {
+	var epks []*EncapsulatedPacket
+
+	for _, epk := range pk.Messages {
+		if epk.Reliability.IsReliable() {
+			epks = append(epks, epk)
+		}
+	}
+
+	pk.Messages = epks
 }
 
 func (pk *CustomPacket) CalcSize() int {
