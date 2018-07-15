@@ -27,5 +27,24 @@ type SplitPacket struct {
 	SplitCount  int
 	Reliability raknet.Reliability
 
-	Packets map[int]raknet.Packet
+	Payloads map[int][]byte
+}
+
+func (spk *SplitPacket) Update(epk *protocol.EncapsulatedPacket) (b []byte) {
+	if !epk.Split && int(epk.SplitID) != spk.SplitID &&
+		int(epk.SplitCount) != spk.SplitCount && epk.Reliability == spk.Reliability {
+		return nil
+	}
+
+	spk.Payloads[int(epk.SplitIndex)] = epk.Payload
+
+	if len(spk.Payloads) >= spk.SplitCount {
+		for _, payload := range spk.Payloads {
+			b = append(b, payload...)
+		}
+
+		return b
+	}
+
+	return nil
 }

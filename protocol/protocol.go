@@ -21,6 +21,8 @@ func (protocol *Protocol) RegisterPackets() {
 	protocol.packets[IDConnectedPing] = &ConnectedPing{}
 	protocol.packets[IDUnconnectedPing] = &UnconnectedPing{}
 	protocol.packets[IDUnconnectedPingOpenConnections] = &UnconnectedPingOpenConnections{}
+	protocol.packets[IDConnectedPong] = &ConnectedPong{}
+	protocol.packets[IDDetectLostConnections] = &DetectLostConnections{}
 	protocol.packets[IDOpenConnectionRequest1] = &OpenConnectionRequestOne{}
 	protocol.packets[IDOpenConnectionReply1] = &OpenConnectionResponseOne{}
 	protocol.packets[IDOpenConnectionRequest2] = &OpenConnectionRequestTwo{}
@@ -34,22 +36,16 @@ func (protocol *Protocol) RegisterPackets() {
 	protocol.packets[IDConnectionBanned] = &ConnectionBanned{}
 	protocol.packets[IDIncompatibleProtocolVersion] = &IncompatibleProtocol{}
 	protocol.packets[IDUnconnectedPong] = &UnconnectedPong{}
-	protocol.packets[IDCustom0] = NewCustomPacket(IDCustom0)
-	protocol.packets[IDCustom1] = NewCustomPacket(IDCustom1)
-	protocol.packets[IDCustom2] = NewCustomPacket(IDCustom2)
-	protocol.packets[IDCustom3] = NewCustomPacket(IDCustom3)
-	protocol.packets[IDCustom4] = NewCustomPacket(IDCustom4)
-	protocol.packets[IDCustom5] = NewCustomPacket(IDCustom5)
-	protocol.packets[IDCustom6] = NewCustomPacket(IDCustom6)
-	protocol.packets[IDCustom7] = NewCustomPacket(IDCustom7)
-	protocol.packets[IDCustom8] = NewCustomPacket(IDCustom8)
-	protocol.packets[IDCustom9] = NewCustomPacket(IDCustom9)
-	protocol.packets[IDCustomA] = NewCustomPacket(IDCustomA)
-	protocol.packets[IDCustomB] = NewCustomPacket(IDCustomB)
-	protocol.packets[IDCustomC] = NewCustomPacket(IDCustomC)
-	protocol.packets[IDCustomD] = NewCustomPacket(IDCustomD)
-	protocol.packets[IDCustomE] = NewCustomPacket(IDCustomE)
-	protocol.packets[IDCustomF] = NewCustomPacket(IDCustomF)
+	protocol.packets[IDACK] = &Acknowledge{
+		Type: TypeACK,
+	}
+	protocol.packets[IDNACK] = &Acknowledge{
+		Type: TypeNACK,
+	}
+
+	for i := IDCustom0; i <= IDCustomF; i++ {
+		protocol.packets[i] = NewCustomPacket(byte(i))
+	}
 
 }
 

@@ -12,12 +12,13 @@ package server
 import (
 	"context"
 	"errors"
+	"math"
 	"net"
+	"time"
 
 	"github.com/beito123/go-raknet/binary"
 	"github.com/beito123/go-raknet/protocol"
 	"github.com/beito123/go-raknet/util"
-	"github.com/orcaman/concurrent-map"
 
 	raknet "github.com/beito123/go-raknet"
 )
@@ -256,57 +257,287 @@ func (session *Session) handlePacket(pk raknet.Packet) {
 	}
 }
 
-func (session *Session) handleCustomPacket(pk *protocol.CustomPacket) {
+func (session *Session) handleCustomPacket(cpk *protocol.CustomPacket) {
 	if session.State == StateDisconected {
 		return
 	}
 
 	for _, handler := range session.Server.Handlers { // Debug: I'll remove
-		handler.HandlePacket(session.GUID, pk)
+		handler.HandlePacket(session.GUID, cpk)
 	}
 
+	session.PacketReceivedCount++
+
+	// Generate NACK if needed
+	diff := cpk.Index - session.receiveSequenceNumber
+	if diff > 1 { // it need a serial number
+		if diff > 2 {
+			session.sendACK(protocol.TypeNACK, &raknet.Record{
+				Index:    int(session.receiveSequenceNumber.Add(1)),
+				EndIndex: int(cpk.Index.Sub(1)),
+			})
+		} else {
+			session.sendACK(protocol.TypeNACK, &raknet.Record{
+				Index: int(cpk.Index.Sub(1)),
+			})
+		}
+	}
+
+	// Handle epks if it's a newer packet
+	if cpk.Index >= session.receiveSequenceNumber {
+		session.receiveSequenceNumber = cpk.Index
+		for _, epk := range cpk.Messages {
+			session.handleEncapsulated(epk)
+		}
+
+		session.LastPacketReceiveTime = time.Now()
+	}
+
+	// Send ACK
+	session.sendACK(protocol.TypeACK, &raknet.Record{
+		Index: int(cpk.Index),
+	})
 }
 
-func (session *Session) handleACKPacket(pk *protocol.ACK) {
+func (session *Session) handleACKPacket(pk *protocol.Acknowledge) {
 	if session.State == StateDisconected {
 		return
 	}
 
+	switch pk.Type {
+	case protocol.TypeACK:
+		for _, record := range pk.Records {
+			index := record.Index
+
+			_, ok := session.ackReceiptPackets[index]
+			if ok {
+				delete(session.ackReceiptPackets, index)
+			}
+
+			session.recoveryQueue.Remove(index)
+
+			if session.State != StateConnected && session.handshakeRecord != nil {
+				if record.Equals(session.handshakeRecord) {
+					session.State = StateConnected
+					session.Logger.Debug("Jagajaga")
+
+					for _, handler := range session.Server.Handlers {
+						handler.OpenConn(session.GUID, session.Addr)
+					}
+				}
+			}
+		}
+	case protocol.TypeNACK:
+		for i := 0; i < len(pk.Records); i++ {
+			record := pk.Records[i]
+			index := record.Index
+
+			// If the packet is unreliable, send lost packets
+			// but don't send after that
+			p, ok := session.ackReceiptPackets[index]
+			if ok && !p.Reliability.IsReliable() {
+				delete(session.ackReceiptPackets, index)
+			}
+
+			if session.existRecoveryQueue(index) {
+				epks, ok := session.getRecoveryQueue(index)
+				if ok {
+					break
+				}
+
+				nindex, err := session.SendCustomPacket(epks, false)
+				if err != nil {
+					session.Logger.Warn(err)
+					break
+				}
+
+				session.renameRecoveryQueue(index, nindex)
+			}
+		}
+	}
+
+	session.LastPacketReceiveTime = time.Now()
+}
+
+func (session *Session) handleEncapsulated(epk *protocol.EncapsulatedPacket) {
+	reliability := epk.Reliability
+
+	if epk.Split {
+		spk, ok := session.splitQueue[epk.SplitID]
+		if !ok {
+			// If the queue is full, removes unreliable packet to make space
+			if len(session.splitQueue)+1 > raknet.MaxSplitsPerQueue {
+				// Remove unreliable packets from split queue
+				for key, pk := range session.splitQueue {
+					if !pk.Reliability.IsReliable() {
+						delete(session.splitQueue, key)
+					}
+				}
+
+				if len(session.splitQueue)+1 > raknet.MaxSplitsPerQueue {
+					session.Logger.Warn("Failed to make space of split queue")
+					return
+				}
+			}
+
+			session.splitQueue[epk.SplitID] = &SplitPacket{
+				SplitID:     int(epk.SplitID),
+				SplitCount:  int(epk.SplitCount),
+				Reliability: epk.Reliability,
+			}
+
+			spk = session.splitQueue[epk.SplitID]
+		}
+
+		// Add split packet and get complete payload if it's completed
+		payload := spk.Update(epk)
+		if payload == nil {
+			return
+		}
+
+		epk.Payload = payload
+		delete(session.splitQueue, epk.SplitID)
+	}
+
+	// Make sure we are not handling a duplicate
+	if reliability.IsReliable() {
+		_, ok := session.reliablePackets[epk.MessageIndex]
+		if ok {
+			return
+		}
+
+		session.reliablePackets[epk.MessageIndex] = true
+	}
+
+	if epk.OrderChannel >= raknet.MaxChannels {
+		session.Logger.Warn("Invalid channel")
+		return
+	}
+
+	if reliability.IsOrdered() {
+		queue := session.handleQueue[epk.OrderChannel]
+
+		queue[epk.OrderIndex] = epk
+
+		index := session.orderReceiveIndex[int(epk.OrderChannel)]
+		for {
+			p, ok := queue[index]
+			if !ok {
+				break
+			}
+
+			delete(session.handleQueue[epk.OrderChannel], index)
+
+			index++
+
+			session.handlePacket(protocol.NewRaknetPacketBytes(p.Payload), int(epk.OrderChannel))
+		}
+	} else if reliability.IsSequenced() {
+		if epk.OrderIndex > session.sequenceReceiveIndex[int(epk.OrderChannel)] {
+			session.sequenceReceiveIndex[int(epk.OrderChannel)] = epk.OrderIndex
+			session.handlePacket(protocol.NewRaknetPacketBytes(epk.Payload), int(epk.OrderChannel))
+		}
+	} else {
+		session.handlePacket(protocol.NewRaknetPacketBytes(epk.Payload), int(epk.OrderChannel))
+	}
 }
 
 func (session *Session) addSendQueue(epk *protocol.EncapsulatedPacket) {
-	session.sendQueue.Add(epk)
+	session.sendQueue.Set(session.sendQueueOffset, epk)
+	session.sendQueueOffset += (session.sendQueueOffset % math.MaxInt32) + 1
 }
 
-func (session *Session) pollSendQueue() (*protocol.EncapsulatedPacket, error) {
-	item, _ := session.sendQueue.Poll()
+func (session *Session) bumpMessageIndex() (r binary.Triad) {
+	r = session.messageIndex
+	session.messageIndex = session.messageIndex.Bump()
+	return
+}
 
-	epk, ok := item.(*protocol.EncapsulatedPacket)
+func (session *Session) bumpOrderSendIndex(channel int) (r binary.Triad) {
+	r = session.orderSendIndex[channel]
+	session.orderSendIndex[channel] = session.orderSendIndex[channel].Bump()
+	return
+}
+
+func (session *Session) bumpSequenceSendIndex(channel int) (r binary.Triad) {
+	r = session.sequenceSendIndex[channel]
+	session.sequenceSendIndex[channel] = (session.sequenceSendIndex[channel]).Bump()
+	return
+}
+
+func (session *Session) bumpSplitID() (r uint16) {
+	r = uint16(session.splitID)
+	session.splitID = (session.splitID % 65536) + 1
+	return
+}
+
+func (session *Session) getRecoveryQueue(index int) ([]*protocol.EncapsulatedPacket, bool) {
+	v, ok := session.recoveryQueue.Get(index)
 	if !ok {
-		return nil, errors.New("invalid a value")
+		return nil, false
 	}
 
-	return epk, nil
+	epks, ok := v.([]*protocol.EncapsulatedPacket)
+	if !ok {
+		panic("Invalid value, wants []*protocol.EncapsulatedPacket")
+	}
+
+	return epks, true
 }
 
-func (session *Session) bumpMessageIndex() binary.Triad {
-	session.messageIndex = session.messageIndex.Bump()
-	return session.messageIndex
+func (session *Session) getAllRecoveryQueue() (m map[int][]*protocol.EncapsulatedPacket, exists bool) {
+	err := session.recoveryQueue.Range(func(key int, value interface{}) bool {
+		epks, ok := value.([]*protocol.EncapsulatedPacket)
+		if !ok {
+			panic("Invalid value, wants []*protocol.EncapsulatedPacket")
+		}
+
+		m[key] = epks
+
+		return true
+	})
+
+	if err != nil {
+		return nil, false
+	}
+
+	return m, exists
 }
 
-func (session *Session) bumpOrderSendIndex(channel int) binary.Triad {
-	session.orderSendIndex[channel] = session.orderSendIndex[channel].Bump()
-	return session.orderSendIndex[channel]
+func (session *Session) setRecoveryQueue(index int, epks []*protocol.EncapsulatedPacket) {
+	session.recoveryQueue.Set(index, epks)
 }
 
-func (session *Session) bumpSequenceSendIndex(channel int) binary.Triad {
-	session.sequenceSendIndex[channel] = (session.sequenceSendIndex[channel]).Bump()
-	return session.sequenceSendIndex[channel]
+func (session *Session) removeRecoveryQueue(index int) {
+	session.recoveryQueue.Remove(index)
 }
 
-func (session *Session) bumpSplitID() uint16 {
-	session.splitID = (session.splitID + 1) % 65536
-	return uint16(session.splitID)
+func (session *Session) existRecoveryQueue(index int) bool {
+	return session.recoveryQueue.Has(index)
+}
+
+func (session *Session) renameRecoveryQueue(from int, to int) {
+	epks, ok := session.getRecoveryQueue(from)
+	if !ok {
+		return
+	}
+
+	session.setRecoveryQueue(to, epks)
+	session.removeRecoveryQueue(from)
+}
+
+func (session *Session) pollRecoveryQueue() (epks []*protocol.EncapsulatedPacket, ok bool) {
+	value, ok := session.recoveryQueue.Poll()
+	if !ok {
+		return nil, false
+	}
+
+	epks, ok = value.([]*protocol.EncapsulatedPacket)
+	if !ok {
+		return nil, false
+	}
+
+	return epks, true
 }
 
 func (session *Session) SendPacket(pk raknet.Packet, reliability raknet.Reliability, channel int) (protocol.EncapsulatedPacket, error) {
@@ -347,6 +578,37 @@ func (session *Session) SendPacket(pk raknet.Packet, reliability raknet.Reliabil
 	return *epk, nil // returns clone of epk
 }
 
+func (session *Session) SendCustomPacket(epks []*protocol.EncapsulatedPacket, updateRecoveryQueue bool) (int, error) {
+	cpk := protocol.NewCustomPacket(protocol.IDCustom4)
+	cpk.Index = session.sendSequenceNumber
+	cpk.Messages = epks
+
+	session.sendSequenceNumber = session.sendSequenceNumber.Bump()
+
+	err := cpk.Encode()
+	if err != nil {
+		return 0, err
+	}
+
+	for _, epk := range cpk.Messages {
+		session.ackReceiptPackets[epk.Record.Index] = epk
+	}
+
+	session.SendRawPacket(cpk)
+
+	if updateRecoveryQueue {
+		cpk.RemoveUnreliables()
+		if len(cpk.Messages) > 0 {
+			session.setRecoveryQueue(int(cpk.Index), cpk.Messages)
+		}
+	}
+
+	session.PacketSentCount++
+	session.LastPacketSendTime = time.Now()
+
+	return int(cpk.Index), nil
+}
+
 func (session *Session) splitPacket(epk *protocol.EncapsulatedPacket) []*protocol.EncapsulatedPacket {
 	exp := util.SplitBytesSlice(epk.Payload,
 		session.MTU-(protocol.CalcCPacketBaseSize()+protocol.CalcEPacketSize(epk.Reliability, true, []byte{})))
@@ -379,6 +641,24 @@ func (session *Session) splitPacket(epk *protocol.EncapsulatedPacket) []*protoco
 	}
 
 	return spk
+}
+
+func (session *Session) sendACK(typ protocol.ACKType, records ...*raknet.Record) {
+	ack := &protocol.Acknowledge{
+		Type:    typ,
+		Records: records,
+	}
+
+	err := ack.Encode()
+	if err != nil {
+		session.Logger.Warn(err)
+
+		return
+	}
+
+	session.SendRawPacket(ack)
+
+	session.LastPacketSendTime = time.Now()
 }
 
 func (session *Session) SendRawPacket(pk raknet.Packet) {

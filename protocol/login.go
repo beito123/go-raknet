@@ -71,6 +71,26 @@ func (pk *DisconnectionNotification) New() raknet.Packet {
 	return new(DisconnectionNotification)
 }
 
+type DetectLostConnections struct {
+	BasePacket
+}
+
+func (DetectLostConnections) ID() byte {
+	return IDDetectLostConnections
+}
+
+func (pk *DetectLostConnections) Encode() error {
+	return pk.BasePacket.Encode(pk)
+}
+
+func (pk *DetectLostConnections) Decode() error {
+	return pk.BasePacket.Decode(pk)
+}
+
+func (pk *DetectLostConnections) New() raknet.Packet {
+	return new(DetectLostConnections)
+}
+
 type ConnectionBanned struct {
 	BasePacket
 
@@ -492,7 +512,7 @@ type OpenConnectionResponseOne struct {
 	BasePacket
 
 	Magic       bool
-	ServerGuid  int64
+	ServerGUID  int64
 	UseSecurity bool
 	MTU         uint16
 }
@@ -512,7 +532,7 @@ func (pk *OpenConnectionResponseOne) Encode() error {
 		return err
 	}
 
-	err = pk.PutLong(pk.ServerGuid)
+	err = pk.PutLong(pk.ServerGUID)
 	if err != nil {
 		return err
 	}
@@ -538,7 +558,7 @@ func (pk *OpenConnectionResponseOne) Decode() error {
 
 	pk.Magic = pk.CheckMagic()
 
-	pk.ServerGuid, err = pk.Long()
+	pk.ServerGUID, err = pk.Long()
 	if err != nil {
 		return err
 	}
