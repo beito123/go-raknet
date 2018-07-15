@@ -38,49 +38,141 @@ const (
 
 // Session
 type Session struct {
-	Addr              *net.UDPAddr
-	Conn              *net.UDPConn
-	Logger            raknet.Logger
-	Server            *Server
-	GUID              int64
-	MTU               int
-	LatencyEnabled    bool
-	LatencyIdentifier int64
+	// Addr is the client's address to connect
+	Addr *net.UDPAddr
 
-	messageIndex binary.Triad
-	splitID      int
+	// Conn is a connection for the client
+	Conn *net.UDPConn
 
-	reliablePackets []int
+	// Logger is a logger
+	Logger raknet.Logger
 
-	sendQueue         *util.Queue
-	recoveryQueue     cmap.ConcurrentMap // [][]*protocol.EncapsulatedPacket
-	ackReceiptPackets map[int]*protocol.EncapsulatedPacket
+	// Server is the server instance.
+	Server *Server
 
-	sendSequenceNumber    int
-	receiveSequenceNumber int
+	// GUID is a GUID
+	GUID int64
 
-	orderSendIndex       map[int]binary.Triad
-	orderReceiveIndex    map[int]binary.Triad
-	sequenceSendIndex    map[int]binary.Triad
-	sequenceReceiveIndex map[int]binary.Triad
+	// MTU is the max packet size to receive and send
+	MTU int
 
-	ctx context.Context
+	// LatencyEnabled enables measuring a latency time
+	LatencyEnabled bool
+
+	// LatencyID is a latency identifier
+	LatencyID int64
 
 	State SessionState
+
+	// messageIndex is a message index of EncapsulatedPacket
+	messageIndex binary.Triad
+
+	// splitID is a handling split id
+	splitID int
+
+	// reliablePackets contains handled reliable packets
+	reliablePackets map[binary.Triad]bool
+
+	// splitQueue contains split packets with split id
+	// It's used to handle split packets
+	splitQueue map[uint16]*SplitPacket
+
+	// sendQueue is a queue contained packets to send
+	sendQueue util.IntMap // map[int]*protocol.EncapsulatedPacket
+
+	// sendQueueOffset is a offset of sendQueue
+	sendQueueOffset int
+
+	// recoveryQueue is a recovery queue by NACK to send the client
+	// When the session received NACK packet, add lost packets.
+	recoveryQueue util.IntMap // map[int][]*protocol.EncapsulatedPacket
+
+	// ackReceiptPackets contains ack index of sent packets to the client
+	ackReceiptPackets map[int]*protocol.EncapsulatedPacket
+
+	// sendSequenceNumber is sent the newest sequence number to the client
+	// It's used in CustomPacket
+	sendSequenceNumber binary.Triad
+
+	// receiveSequenceNumber is received the newest sequence number from the client
+	// It's used in CustomPacket
+	receiveSequenceNumber binary.Triad
+
+	// orderSendIndex contains the newest sent order indexes to client with order channel.
+	// It's used in EncapsulatedPacket
+	orderSendIndex map[int]binary.Triad
+
+	// orderReceiveIndex contains the newest received order indexes to client with order channel.
+	// It's used in EncapsulatedPacket
+	orderReceiveIndex map[int]binary.Triad
+
+	// sequenceSendIndex contains the newest sent sequence indexes to client with order channel.
+	// It's used in EncapsulatedPacket
+	sequenceSendIndex map[int]binary.Triad
+
+	// sequenceReceiveIndex contains the newest received sequence indexes to client with order channel.
+	// It's used in EncapsulatedPacket
+	sequenceReceiveIndex map[int]binary.Triad
+
+	// handleQueue contains ordered packets with order channel
+	// It's used to handle ordered packet in the order
+	handleQueue map[byte]map[binary.Triad]*protocol.EncapsulatedPacket
+
+	// PacketReceivedCount is sent a packet counter
+	// It's used to check packets count on every second
+	PacketSentCount int
+
+	// PacketReceivedCount is received a packet counter
+	// It's used to check packets count on every second
+	PacketReceivedCount int
+
+	// LastPacketSendTime is the last time sent a packet
+	LastPacketSendTime time.Time
+
+	// LastPacketReceiveTime is the last time received a packet
+	LastPacketReceiveTime time.Time
+
+	// LastRecoverySendTime is the last time sent a lost packet
+	LastRecoverySendTime time.Time
+
+	// LastKeepAliveSendTime is the last time sent DetectLostConnection packet
+	LastKeepAliveSendTime time.Time
+
+	// LastPacketCounterResetTime is the last time reset packet counters
+	LastPacketCounterResetTime time.Time
+
+	// handshakeRecord is a records of a handshake packet
+	// It's used to detect whether the client is connected
+	handshakeRecord *raknet.Record
+
+	ctx context.Context
 }
 
 func (session *Session) SystemAddress() *raknet.SystemAddress {
 	return raknet.NewSystemAddressBytes([]byte(session.Addr.IP), uint16(session.Addr.Port))
 }
 
-func (session *Session) init() {
-	session.sendQueue = util.NewQueue()
-	session.recoveryQueue = cmap.New()
+func (session *Session) Init() {
+	session.reliablePackets = make(map[binary.Triad]bool)
+	session.splitQueue = make(map[uint16]*SplitPacket)
+
+	session.sendQueue = util.NewIntMap()
+	session.recoveryQueue = util.NewIntMap()
+
+	session.ackReceiptPackets = make(map[int]*protocol.EncapsulatedPacket)
 
 	session.orderSendIndex = make(map[int]binary.Triad, raknet.MaxChannels)
 	session.orderReceiveIndex = make(map[int]binary.Triad, raknet.MaxChannels)
 	session.sequenceSendIndex = make(map[int]binary.Triad, raknet.MaxChannels)
 	session.sequenceReceiveIndex = make(map[int]binary.Triad, raknet.MaxChannels)
+
+	session.handleQueue = make(map[byte]map[binary.Triad]*protocol.EncapsulatedPacket)
+
+	session.LastPacketSendTime = time.Now()
+	session.LastPacketReceiveTime = time.Now()
+	session.LastRecoverySendTime = time.Now()
+	session.LastKeepAliveSendTime = time.Now()
+	session.LastPacketCounterResetTime = time.Now()
 }
 
 func (session *Session) handlePacket(pk raknet.Packet) {
