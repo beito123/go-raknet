@@ -209,30 +209,35 @@ type Record struct {
 	EndIndex int
 }
 
+// Equals returns whether the record equals record sub
+func (record *Record) Equals(sub *Record) bool {
+	return record.Index == sub.Index && record.EndIndex == sub.EndIndex
+}
+
 // IsRanged returns whether the record is range
-func (rec *Record) IsRanged() bool {
-	return rec.Index < rec.EndIndex
+func (record *Record) IsRanged() bool {
+	return record.Index < record.EndIndex
 }
 
 // Count returns the number of Record
-func (rec *Record) Count() int {
-	if !rec.IsRanged() {
+func (record *Record) Count() int {
+	if !record.IsRanged() {
 		return 1
 	}
 
-	return (rec.EndIndex - rec.Index) + 1
+	return (record.EndIndex - record.Index) + 1
 }
 
 // Numbers returns numbers recorded in Record as array
-func (rec *Record) Numbers() []int {
-	count := rec.Count()
+func (record *Record) Numbers() []int {
+	count := record.Count()
 	if count == 1 {
-		return []int{rec.Index}
+		return []int{record.Index}
 	}
 
 	numbers := make([]int, count)
 	for i := 0; i < count; i++ {
-		numbers[i] = rec.Index + i
+		numbers[i] = record.Index + i
 	}
 
 	return numbers
