@@ -441,6 +441,8 @@ func (ser *Server) handlePacket(ctx context.Context, addr *net.UDPAddr, b []byte
 			ctx:    ctx,
 		}
 
+		session.Init()
+
 		ser.storeSession(addr, session)
 
 		ser.SendPacket(addr, rpk)
@@ -580,7 +582,7 @@ func (ser *Server) GetSession(addr *net.UDPAddr) (*Session, bool) {
 	if session.State == StateDisconected {
 		ser.CloseSession(addr, "Already closed")
 
-		session = nil
+		return nil, false
 	}
 
 	return session, true
@@ -589,7 +591,7 @@ func (ser *Server) GetSession(addr *net.UDPAddr) (*Session, bool) {
 func (ser *Server) closeSession(session *Session) {
 	ser.removeSession(session.Addr)
 
-	session.SendPacket(&protocol.DisconnectionNotification{}, raknet.Unreliable, 0)
+	session.Close()
 }
 
 func (ser *Server) CloseSession(addr *net.UDPAddr, reason string) error {
