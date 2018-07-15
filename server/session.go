@@ -232,11 +232,12 @@ func (session *Session) handlePacket(pk raknet.Packet, channel int) {
 			ServerTimestamp: npk.ClientTimestamp,
 		}
 
-		_, err = session.SendPacket(hpk, raknet.ReliableOrderedWithACKReceipt, raknet.DefaultChannel)
 		epk, err := session.SendPacket(hpk, raknet.ReliableOrderedWithACKReceipt, channel)
 		if err != nil {
 			session.Server.CloseSession(session.Addr, "Failed to login")
 		}
+
+		session.handshakeRecord = epk.Record
 	case *protocol.DisconnectionNotification:
 		err := npk.Decode()
 		if err != nil {
