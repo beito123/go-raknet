@@ -448,14 +448,13 @@ func (ser *Server) handlePacket(ctx context.Context, addr *net.UDPAddr, b []byte
 	}
 
 	switch npk := pk.(type) {
-	case *protocol.ACK:
+	case *protocol.Acknowledge:
 		session.handleACKPacket(npk)
 	case *protocol.CustomPacket:
 		session.handleCustomPacket(npk)
 	default:
-		session.handlePacket(npk)
+		session.handlePacket(npk, raknet.DefaultChannel)
 	}
-
 }
 
 func (ser *Server) newSystemAddress(addr *net.UDPAddr) *raknet.SystemAddress {
