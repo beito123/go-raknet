@@ -10,7 +10,6 @@ package server
  */
 
 import (
-	"context"
 	"errors"
 	"math"
 	"net"
@@ -51,7 +50,7 @@ type Session struct {
 	// Server is the server instance.
 	Server *Server
 
-	// GUID is a GUID
+	// GUID is session's GUID
 	GUID int64
 
 	// MTU is the max packet size to receive and send
@@ -145,8 +144,6 @@ type Session struct {
 	// handshakeRecord is a records of a handshake packet
 	// It's used to detect whether the client is connected
 	handshakeRecord *raknet.Record
-
-	ctx context.Context
 }
 
 func (session *Session) SystemAddress() *raknet.SystemAddress {
@@ -668,12 +665,6 @@ func (session *Session) SendRawPacket(pk raknet.Packet) {
 }
 
 func (session *Session) update() bool {
-	select {
-	case <-session.ctx.Done():
-		return false
-	default:
-	}
-
 	if session.State == StateDisconected {
 		return false
 	}

@@ -438,7 +438,6 @@ func (ser *Server) handlePacket(ctx context.Context, addr *net.UDPAddr, b []byte
 			MTU:    ser.MTU,
 			State:  StateHandshaking,
 			Server: ser,
-			ctx:    ctx,
 		}
 
 		session.Init()
