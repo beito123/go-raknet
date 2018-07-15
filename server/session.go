@@ -677,7 +677,77 @@ func (session *Session) update() bool {
 		return false
 	}
 
-	//
+	current := time.Now()
+
+	// send packets in the send queue
+	if !session.sendQueue.IsEmpty() && session.PacketSentCount < raknet.MaxPacketsPerSecond {
+		var send []*protocol.EncapsulatedPacket
+		sendLen := protocol.CalcCPacketBaseSize()
+
+		err := session.sendQueue.Range(func(key int, value interface{}) bool {
+			epk, ok := value.(*protocol.EncapsulatedPacket)
+			if !ok {
+				return true
+			}
+
+			sendLen += epk.CalcSize()
+			if sendLen > session.MTU {
+				return false
+			}
+
+			send = append(send, epk)
+			session.sendQueue.Remove(key)
+
+			return true
+		})
+
+		if err != nil {
+			session.Logger.Warn(err)
+		}
+
+		if len(send) > 0 {
+			session.SendCustomPacket(send, true)
+		}
+	}
+
+	// resend lost packets
+	if current.Sub(session.LastRecoverySendTime) >= raknet.RecoverySendInterval {
+		pks, ok := session.pollRecoveryQueue()
+		if ok {
+			session.SendCustomPacket(pks, false)
+			session.LastRecoverySendTime = time.Now()
+		}
+	}
+
+	// Send ping to detect latency if it is enabled
+	if session.LatencyEnabled {
+		//TODO: write
+	}
+
+	if current.Sub(session.LastPacketReceiveTime) >= raknet.DetectionSendInterval &&
+		current.Sub(session.LastKeepAliveSendTime) >= raknet.DetectionSendInterval &&
+		session.State == StateConnected {
+
+		session.SendPacket(&protocol.DetectLostConnections{}, raknet.Unreliable, raknet.DefaultChannel)
+		session.LastKeepAliveSendTime = time.Now()
+
+		session.Logger.Debug("Sent DetectLostConnections packet to the client")
+	}
+
+	// Time out
+	if current.Sub(session.LastPacketReceiveTime) >= raknet.SessionTimeout {
+		for _, handler := range session.Server.Handlers {
+			handler.Timeout(session.GUID)
+		}
+
+		return false
+	}
+
+	if current.Sub(session.LastPacketCounterResetTime) >= 1000 {
+		session.PacketSentCount = 0
+		session.PacketReceivedCount = 0
+		session.LastPacketCounterResetTime = current
+	}
 
 	return true
 }
