@@ -12,7 +12,6 @@ package server
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net"
 	"time"
 
@@ -179,7 +178,7 @@ func (ser *Server) Serve(ctx context.Context, l *net.UDPConn) error {
 			}
 
 			err := ser.RangeSessions(func(key string, session *Session) bool {
-				if !session.update() { // if it is closed, remove session from server
+				if !session.update() {
 					ser.removeSession(session.Addr)
 				}
 
@@ -199,10 +198,10 @@ func (ser *Server) Serve(ctx context.Context, l *net.UDPConn) error {
 			}
 		}
 
-		// Close sessions
+		// Close all sessions
 		ser.RangeSessions(func(key string, session *Session) bool {
 			ser.removeSession(session.Addr)
-			
+
 			return true
 		})
 	}()
@@ -299,8 +298,6 @@ func (ser *Server) handlePacket(ctx context.Context, addr *net.UDPAddr, b []byte
 			return
 		}
 
-		fmt.Printf("%#v", pong.Bytes())
-
 		ser.SendPacket(addr, pong)
 
 		return
@@ -315,6 +312,7 @@ func (ser *Server) handlePacket(ctx context.Context, addr *net.UDPAddr, b []byte
 		err := npk.Decode()
 		if err != nil {
 			ser.Logger.Warn(err)
+			return
 		}
 
 		session, ok := ser.GetSession(addr)
@@ -366,9 +364,11 @@ func (ser *Server) handlePacket(ctx context.Context, addr *net.UDPAddr, b []byte
 			return
 		}
 
-		rpk := &protocol.OpenConnectionResponseOne{}
-		rpk.ServerGuid = ser.uid
-		rpk.MTU = uint16(npk.MTU)
+		rpk := &protocol.OpenConnectionResponseOne{
+			ServerGUID:  ser.uid,
+			MTU:         uint16(npk.MTU),
+			UseSecurity: false, // we no supported
+		}
 
 		err = rpk.Encode()
 		if err != nil {
@@ -515,8 +515,7 @@ func (ser *Server) restoreSession(addr net.Addr) (*Session, bool) {
 }
 
 func (ser *Server) existSession(addr net.Addr) bool {
-	_, b := ser.restoreSession(addr)
-	return b
+	return ser.sessions.Has(addr.String())
 }
 
 func (ser *Server) removeSession(addr net.Addr) {

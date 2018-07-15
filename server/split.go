@@ -15,8 +15,8 @@ import (
 )
 
 func needSplit(reliability raknet.Reliability, pk raknet.Packet, mtu int) bool {
-	return (protocol.CalcCPacketBaseSize() + 
-	protocol.CalcEPacketSize(reliability, false, pk.Bytes())) > mtu
+	return (protocol.CalcCPacketBaseSize() +
+		protocol.CalcEPacketSize(reliability, false, pk.Bytes())) > mtu
 }
 
 //func splitPacket(epk *protocol.EncapsulatedPacket, mtu int)
