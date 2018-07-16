@@ -1,6 +1,6 @@
-# Go-raknet
+# go-raknet
 
-Go-raknet is Raknet library for Medaka written in Go.
+go-raknet is Raknet library for Medaka written in Go. (supported a server only)
 
 Most of the codes are based on [JRaknet](https://github.com/JRakNet/JRakNet) (by [JRaknet-Team](https://github.com/JRakNet) and [Whirvis](https://github.com/Whirvis)).
 
@@ -45,3 +45,5 @@ Thank you very much!
 
 - [go.uuid](https://github.com/satori/go.uuid) (by [satori](https://github.com/satori) License: [MIT License](https://opensource.org/licenses/mit-license.php)) : A UUID library
 - [concurrent-map](https://github.com/orcaman/concurrent-map) (by [orcaman](https://github.com/orcaman) License: [MIT License](https://opensource.org/licenses/mit-license.php)) : A thread-safe map
+
+and You!
