@@ -51,6 +51,10 @@ func (m *IntMap) Remove(key int) {
 	m.Remove(key)
 }
 
+func (m *IntMap) Clear() {
+	m.Map = cmap.New()
+}
+
 func (m *IntMap) Poll() (val interface{}, ok bool) {
 	keys := m.keys()
 	if len(keys) == 0 {

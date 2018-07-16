@@ -751,10 +751,15 @@ func (session *Session) Close() error {
 	}
 
 	//session.Server.CloseSession(session.UUID, "Disconnected from server")
-	session.State = StateDisconected
+
+	session.sendQueue.Clear()
 
 	// send a disconnection notification packet
 	session.SendPacket(&protocol.DisconnectionNotification{}, raknet.Unreliable, 0)
+
+	session.update()
+
+	session.State = StateDisconected
 
 	return nil
 }
