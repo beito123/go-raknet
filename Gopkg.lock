@@ -4,8 +4,8 @@
 [[projects]]
   name = "github.com/Sirupsen/logrus"
   packages = ["."]
-  revision = "c155da19408a8799da419ed3eeb0cb5db0ad5dbc"
-  version = "v1.0.5"
+  revision = "3e01752db0189b9157070a0e1668a620f9a85da2"
+  version = "v1.0.6"
 
 [[projects]]
   name = "github.com/beito123/binary"
@@ -29,7 +29,7 @@
   branch = "master"
   name = "github.com/orcaman/concurrent-map"
   packages = ["."]
-  revision = "a05df785d2dcc16310fb997ee1702100d047cfe1"
+  revision = "b28018939af9022337862b94a463abb18abb3e0e"
 
 [[projects]]
   branch = "master"
@@ -39,9 +39,15 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/secnot/orderedmap"
+  packages = ["."]
+  revision = "a05363cca499d93a5de6081a1dfc1b35d1c9c9ee"
+
+[[projects]]
+  branch = "master"
   name = "golang.org/x/crypto"
   packages = ["ssh/terminal"]
-  revision = "a8fb68e7206f8c78be19b432c58eb52a6aa34462"
+  revision = "c126467f60eb25f8f27e5a981f32a87e3965053f"
 
 [[projects]]
   branch = "master"
@@ -50,11 +56,11 @@
     "unix",
     "windows"
   ]
-  revision = "6c888cc515d3ed83fc103cf1d84468aad274b0a7"
+  revision = "bd9dbc187b6e1dacfdd2722a87e83093c2d7bd6e"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "a207b3aadc2bb7dd94778707221a597f3f94c85bf4ae18ea21a8a93aa38b020a"
+  inputs-digest = "2e33a14847279a865b97af98bb9c81a586e8eab6afebf097c6247ac7fb412d8f"
   solver-name = "gps-cdcl"
   solver-version = 1
