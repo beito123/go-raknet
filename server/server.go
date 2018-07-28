@@ -298,11 +298,7 @@ func (ser *Server) handlePacket(ctx context.Context, addr *net.UDPAddr, b []byte
 			return
 		}
 
-<<<<<<< HEAD
 		ser.SendRawPacket(addr, pong.Bytes())
-=======
-		ser.SendPacket(addr, pong)
->>>>>>> origin/master
 
 		return
 	}
@@ -338,11 +334,7 @@ func (ser *Server) handlePacket(ctx context.Context, addr *net.UDPAddr, b []byte
 				return
 			}
 
-<<<<<<< HEAD
 			ser.SendRawPacket(addr, epk.Bytes())
-=======
-			ser.SendPacket(addr, epk)
->>>>>>> origin/master
 			return
 		}
 
@@ -358,11 +350,7 @@ func (ser *Server) handlePacket(ctx context.Context, addr *net.UDPAddr, b []byte
 				return
 			}
 
-<<<<<<< HEAD
 			ser.SendRawPacket(addr, rpk.Bytes())
-=======
-			ser.SendPacket(addr, rpk)
->>>>>>> origin/master
 
 			ser.Logger.Debug("Invalid connection with an incompatible network protocol.",
 				" client: ", npk.ProtocolVersion, " server: ", ser.NetworkProtocol)
@@ -388,11 +376,7 @@ func (ser *Server) handlePacket(ctx context.Context, addr *net.UDPAddr, b []byte
 			return
 		}
 
-<<<<<<< HEAD
 		ser.SendRawPacket(addr, rpk.Bytes())
-=======
-		ser.SendPacket(addr, rpk)
->>>>>>> origin/master
 
 		return
 	case *protocol.OpenConnectionRequestTwo:
@@ -409,11 +393,7 @@ func (ser *Server) handlePacket(ctx context.Context, addr *net.UDPAddr, b []byte
 				return
 			}
 
-<<<<<<< HEAD
 			ser.SendRawPacket(addr, epk.Bytes())
-=======
-			ser.SendPacket(addr, epk)
->>>>>>> origin/master
 			return
 		}
 
@@ -426,11 +406,7 @@ func (ser *Server) handlePacket(ctx context.Context, addr *net.UDPAddr, b []byte
 				return
 			}
 
-<<<<<<< HEAD
 			ser.SendRawPacket(addr, rpk.Bytes())
-=======
-			ser.SendPacket(addr, rpk)
->>>>>>> origin/master
 			return
 		}
 
@@ -462,21 +438,13 @@ func (ser *Server) handlePacket(ctx context.Context, addr *net.UDPAddr, b []byte
 			MTU:    ser.MTU,
 			State:  StateHandshaking,
 			Server: ser,
-<<<<<<< HEAD
-=======
-			ctx:    ctx,
->>>>>>> origin/master
 		}
 
 		session.Init()
 
 		ser.storeSession(addr, session)
 
-<<<<<<< HEAD
 		ser.SendRawPacket(addr, rpk.Bytes())
-=======
-		ser.SendPacket(addr, rpk)
->>>>>>> origin/master
 
 		return
 	}
@@ -646,7 +614,6 @@ func (ser *Server) CloseSessionGUID(guid int64, reason string) error {
 	return nil
 }
 
-<<<<<<< HEAD
 func (ser *Server) SendPacket(guid int64, b []byte, reliability raknet.Reliability, channel int) error {
 	session, ok := ser.GetSessionGUID(guid)
 	if !ok {
@@ -664,17 +631,6 @@ func (ser *Server) SendRawPacket(addr *net.UDPAddr, b []byte) {
 		handler.HandleSendPacket(addr, rpk)
 	}
 
-=======
-func (ser *Server) SendPacket(addr *net.UDPAddr, pk raknet.Packet) {
-	for _, handler := range ser.Handlers { // For debug
-		handler.HandleSendPacket(addr, pk)
-	}
-
-	ser.SendRawPacket(addr, pk.Bytes())
-}
-
-func (ser *Server) SendRawPacket(addr *net.UDPAddr, b []byte) {
->>>>>>> origin/master
 	go func() { // TODO: rewrite
 		ser.conn.WriteToUDP(b, addr)
 	}()
