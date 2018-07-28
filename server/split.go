@@ -14,9 +14,9 @@ import (
 	"github.com/beito123/go-raknet/protocol"
 )
 
-func needSplit(reliability raknet.Reliability, pk raknet.Packet, mtu int) bool {
+func needSplit(reliability raknet.Reliability, b []byte, mtu int) bool {
 	return (protocol.CalcCPacketBaseSize() +
-		protocol.CalcEPacketSize(reliability, false, pk.Bytes())) > mtu
+		protocol.CalcEPacketSize(reliability, false, b)) > mtu
 }
 
 //func splitPacket(epk *protocol.EncapsulatedPacket, mtu int)

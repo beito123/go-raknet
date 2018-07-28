@@ -618,7 +618,7 @@ func (ser *Server) SendPacket(guid int64, b []byte, reliability raknet.Reliabili
 	session, ok := ser.GetSessionGUID(guid)
 	if !ok {
 		return errors.New("not found the session")
-}
+	}
 
 	_, err := session.SendPacketBytes(b, reliability, channel)
 

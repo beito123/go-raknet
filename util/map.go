@@ -10,92 +10,216 @@ package util
  */
 
 import (
-	"sort"
-	"strconv"
+	"math"
+	"sync"
 
-	"github.com/orcaman/concurrent-map"
+	"github.com/secnot/orderedmap"
 )
 
-func NewIntMap() IntMap {
-	return IntMap{
-		Map: cmap.New(),
+func NewOrderedMap() *OrderedMap {
+	return &OrderedMap{
+		Map: orderedmap.NewOrderedMap(),
 	}
 }
 
-// IntMap is a simple int map
-type IntMap struct {
-	Map cmap.ConcurrentMap
+// OrderedMap is an ordered map supported concurrent acceses
+// It's a wrapper of github.com/secnot/orderedmap. Thank you!
+type OrderedMap struct {
+	Map *orderedmap.OrderedMap
+
+	sync.RWMutex
 }
 
-func (m *IntMap) IsEmpty() bool {
-	return m.Map.IsEmpty()
+func (m *OrderedMap) Clear() {
+	m.Lock()
+	m.Map = orderedmap.NewOrderedMap()
+	m.Unlock()
 }
 
-func (m *IntMap) Size() int {
-	return m.Map.Count()
+func (m *OrderedMap) Len() (l int) {
+	m.RLock()
+	l = m.Map.Len()
+	m.RUnlock()
+
+	return l
 }
 
-func (m *IntMap) Has(key int) bool {
-	return m.Map.Has(strconv.Itoa(key))
+func (m *OrderedMap) Exist(key interface{}) (ok bool) {
+	_, ok = m.Get(key)
+	return ok
 }
 
-func (m *IntMap) Get(key int) (interface{}, bool) {
-	return m.Map.Get(strconv.Itoa(key))
+func (m *OrderedMap) Get(key interface{}) (val interface{}, ok bool) {
+	m.RLock()
+	val, ok = m.Map.Get(key)
+	m.RUnlock()
+
+	return val, ok
 }
 
-func (m *IntMap) Set(key int, value interface{}) {
-	m.Map.Set(strconv.Itoa(key), value)
+func (m *OrderedMap) Set(key interface{}, val interface{}) {
+	m.Lock()
+	m.Map.Set(key, val)
+	m.Unlock()
 }
 
-func (m *IntMap) Remove(key int) {
-	m.Remove(key)
+func (m *OrderedMap) first() (key interface{}, val interface{}, ok bool) {
+	m.RLock()
+	key, val, ok = m.Map.GetFirst()
+	m.RUnlock()
+
+	return key, val, ok
 }
 
-func (m *IntMap) Clear() {
-	m.Map = cmap.New()
+func (m *OrderedMap) last() (key interface{}, val interface{}, ok bool) {
+	m.RLock()
+	key, val, ok = m.Map.GetLast()
+	m.RUnlock()
+
+	return key, val, ok
 }
 
-func (m *IntMap) Poll() (val interface{}, ok bool) {
-	keys := m.keys()
-	if len(keys) == 0 {
-		return nil, false
-	}
+func (m *OrderedMap) FirstKey() (key interface{}, ok bool) {
+	key, _, ok = m.first()
 
-	val, ok = m.Map.Get(keys[0])
+	return key, ok
+}
+
+func (m *OrderedMap) LastKey() (key interface{}, ok bool) {
+	key, _, ok = m.last()
+
+	return key, ok
+}
+
+func (m *OrderedMap) First() (val interface{}, ok bool) {
+	_, val, ok = m.first()
+
+	return val, ok
+}
+
+func (m *OrderedMap) Last() (val interface{}, ok bool) {
+	_, val, ok = m.last()
+
+	return val, ok
+}
+
+func (m *OrderedMap) Remove(key interface{}) {
+	m.Lock()
+	m.Map.Delete(key)
+	m.Unlock()
+}
+
+func (m *OrderedMap) Pop() (val interface{}, ok bool) {
+	key, val, ok := m.Map.GetLast()
 	if !ok {
 		return nil, false
 	}
 
-	m.Map.Remove(keys[0])
+	m.Remove(key)
 
-	return val, true
+	return val, ok
 }
 
-func (m *IntMap) Range(f func(key int, value interface{}) bool) error {
-	items := m.Map.Items()
-	for _, k := range m.keys() {
-		item, ok := items[k]
+func (m *OrderedMap) Shift() (val interface{}, ok bool) {
+	key, val, ok := m.Map.GetFirst()
+	if !ok {
+		return nil, false
+	}
+
+	m.Remove(key)
+
+	return val, ok
+}
+
+func (m *OrderedMap) Range(f func(key interface{}, value interface{}) bool) {
+	iter := m.Map.Iter()
+	for {
+		key, val, ok := iter.Next()
 		if !ok {
-			continue
+			break
 		}
 
-		n, err := strconv.Atoi(k)
-		if err != nil {
-			continue
-		}
-
-		if !f(n, item) {
+		if !f(key, val) {
 			break
 		}
 	}
-
-	return nil
 }
 
-func (m *IntMap) keys() []string {
-	keys := Strings(m.Map.Keys())
+func (m *OrderedMap) RangeAndRemove(f func(key interface{}, value interface{}) bool) {
+	iter := m.Map.Iter()
+	for {
+		key, val, ok := iter.Next()
+		if !ok {
+			break
+		}
 
-	sort.Sort(keys)
+		m.Remove(key)
 
-	return keys
+		if !f(key, val) {
+			break
+		}
+	}
+}
+
+func NewQueue() *Queue {
+	return &Queue{
+		Map: NewOrderedMap(),
+	}
+}
+
+type Queue struct {
+	Map *OrderedMap
+
+	off int
+}
+
+func (q *Queue) Clear() {
+	q.off = 0
+
+	q.Clear()
+}
+
+func (q *Queue) IsEmpty() bool {
+	return q.Size() == 0
+}
+
+func (q *Queue) Size() int {
+	return q.Size()
+}
+
+func (q *Queue) Remove() {
+	key, ok := q.Map.LastKey()
+	if !ok {
+		return
+	}
+
+	q.Map.Remove(key)
+}
+
+func (q *Queue) bump() int {
+	return (q.off % math.MaxInt32) + 1
+}
+
+func (q *Queue) Add(val interface{}) {
+	q.Map.Set(q.bump(), val)
+}
+
+func (q *Queue) Peek() (interface{}, bool) {
+	return q.Map.Last()
+}
+
+func (q *Queue) Poll() (interface{}, bool) {
+	return q.Map.Pop()
+}
+
+func (q *Queue) Range(f func(val interface{}) bool) {
+	q.Map.Range(func(key interface{}, val interface{}) bool {
+		return f(val)
+	})
+}
+
+func (q *Queue) RangeAndRemove(f func(val interface{}) bool) {
+	q.Map.RangeAndRemove(func(key interface{}, val interface{}) bool {
+		return f(val)
+	})
 }
