@@ -37,45 +37,41 @@ func (base *BasePacket) Bytes() []byte {
 	return base.RaknetStream.AllBytes()
 }
 
-func NewRaknetPacket(id byte) *RaknetPacket {
-	return &RaknetPacket{
-		id: id,
-	}
-}
-
-func NewRaknetPacketBytes(b []byte) *RaknetPacket {
+func NewRawPacket(b []byte) *RawPacket {
 	id := byte(0xff)
 	if len(b) > 0 {
 		id = b[0]
 	}
 
-	pk := NewRaknetPacket(id)
+	pk := &RawPacket{
+		id: id,
+	}
 
 	pk.SetBytes(b)
 
 	return pk
 }
 
-type RaknetPacket struct {
+type RawPacket struct {
 	BasePacket
 
 	id byte
 }
 
-func (pk *RaknetPacket) ID() byte {
+func (pk *RawPacket) ID() byte {
 	return pk.id
 }
 
-func (pk *RaknetPacket) Encode() error {
+func (pk *RawPacket) Encode() error {
 	return nil
 }
 
-func (pk *RaknetPacket) Decode() error {
+func (pk *RawPacket) Decode() error {
 	return nil
 }
 
-func (pk *RaknetPacket) New() raknet.Packet {
-	return &RaknetPacket{
+func (pk *RawPacket) New() raknet.Packet {
+	return &RawPacket{
 		id: pk.id,
 	}
 }

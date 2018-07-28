@@ -429,15 +429,15 @@ func (session *Session) handleEncapsulated(epk *protocol.EncapsulatedPacket) {
 
 			index++
 
-			session.handlePacket(protocol.NewRaknetPacketBytes(p.Payload), int(epk.OrderChannel))
+			session.handlePacket(protocol.NewRawPacket(p.Payload), int(epk.OrderChannel))
 		}
 	} else if reliability.IsSequenced() {
 		if epk.OrderIndex > session.sequenceReceiveIndex[int(epk.OrderChannel)] {
 			session.sequenceReceiveIndex[int(epk.OrderChannel)] = epk.OrderIndex
-			session.handlePacket(protocol.NewRaknetPacketBytes(epk.Payload), int(epk.OrderChannel))
+			session.handlePacket(protocol.NewRawPacket(epk.Payload), int(epk.OrderChannel))
 		}
 	} else {
-		session.handlePacket(protocol.NewRaknetPacketBytes(epk.Payload), int(epk.OrderChannel))
+		session.handlePacket(protocol.NewRawPacket(epk.Payload), int(epk.OrderChannel))
 	}
 }
 
