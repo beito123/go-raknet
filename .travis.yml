@@ -13,7 +13,8 @@ before_script:
 script:
   - dep ensure
   - go vet ./...
-  - go build -race ./example/
+  - cd ./example/
+  - go build -race
 
 #  - diff <(goimports -d .) <(printf "")
 #  - diff <(golint ./...) <(printf "")
