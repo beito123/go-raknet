@@ -15,38 +15,38 @@ import (
 	raknet "github.com/beito123/go-raknet"
 )
 
-// Handler handles packets, connections and more from Raknet server
+// Handler handles processing from server
 type Handler interface {
 
-	// StartServer is called when the server is started
+	// Start is called when the server is started
 	StartServer()
 
-	// CloseServer is called when the server is closed
+	// Close is called when the server is closed
 	CloseServer()
 
 	// HandlePing is called when a ping packet is received
 	HandlePing(addr net.Addr)
 
-	// OpenPreConn is called when a new client is created before
-	OpenPreConn(addr net.Addr)
+	// OpenedPreConn is called when a new client is created before
+	OpenedPreConn(addr net.Addr)
 
-	// OpenConn is called when a new client is created
-	OpenConn(uid int64, addr net.Addr)
+	// OpenedConn is called when a new client is created
+	OpenedConn(uid int64, addr net.Addr)
 
-	// ClosePreConn is called when a client is closed before
-	ClosePreConn(uid int64)
+	// ClosedPreConn is called when a client is closed before
+	ClosedPreConn(uid int64)
 
-	// CloseConn is called when a client is closed
-	CloseConn(uid int64)
+	// ClosedConn is called when a client is closed
+	ClosedConn(uid int64)
 
 	// Timeout is called when a client is timed out
-	Timeout(uid int64)
+	Timedout(uid int64)
 
-	// BlockedAddress is called when a client is added blocked address
-	AddBlockedAddress(ip net.IP, reason string)
+	// AddedBlockedAddress is called when a client is added blocked address
+	AddedBlockedAddress(ip net.IP, reason string)
 
-	// BlockedAddress is called when a client is removed blocked address
-	RemoveBlockedAddress(ip net.IP, reason string)
+	// RemovedBlockedAddress is called when a client is removed blocked address
+	RemovedBlockedAddress(ip net.IP, reason string)
 
 	// HandleSendPacket handles a packet sent from the server to a client
 	HandleSendPacket(addr net.Addr, pk raknet.Packet)

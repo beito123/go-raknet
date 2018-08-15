@@ -317,7 +317,7 @@ func (session *Session) handleACKPacket(pk *protocol.Acknowledge) {
 					session.Logger.Debug("Jagajaga")
 
 					for _, handler := range session.Server.Handlers {
-						handler.OpenConn(session.GUID, session.Addr)
+						handler.OpenedConn(session.GUID, session.Addr)
 					}
 				}
 			}
@@ -705,12 +705,13 @@ func (session *Session) update() bool {
 	// Time out
 	if current.Sub(session.LastPacketReceiveTime) >= raknet.SessionTimeout {
 		for _, handler := range session.Server.Handlers {
-			handler.Timeout(session.GUID)
+			handler.Timedout(session.GUID)
 		}
 
 		return false
 	}
 
+	// Reset counters
 	if current.Sub(session.LastPacketCounterResetTime) >= 1000 {
 		session.PacketSentCount = 0
 		session.PacketReceivedCount = 0

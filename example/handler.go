@@ -63,12 +63,12 @@ func (hand *MonitorHandler) HandlePing(addr net.Addr) {
 	}
 }
 
-// OpenPreConn is called before a new session is created
-func (MonitorHandler) OpenPreConn(addr net.Addr) {
+// OpenedPreConn is called before a new session is created
+func (MonitorHandler) OpenedPreConn(addr net.Addr) {
 }
 
 // OpenConn is called on a new session is created
-func (hand *MonitorHandler) OpenConn(uid int64, addr net.Addr) {
+func (hand *MonitorHandler) OpenedConn(uid int64, addr net.Addr) {
 	if hand.IsTargetAddr(addr) {
 		hand.out <- "# Connected the monitor target from " + addr.String() + "\n\n"
 
@@ -77,11 +77,11 @@ func (hand *MonitorHandler) OpenConn(uid int64, addr net.Addr) {
 }
 
 // ClosePreConn is called before a session is closed
-func (MonitorHandler) ClosePreConn(uid int64) {
+func (MonitorHandler) ClosedPreConn(uid int64) {
 }
 
 // CloseConn is called on a session is closed
-func (hand *MonitorHandler) CloseConn(uid int64) {
+func (hand *MonitorHandler) ClosedConn(uid int64) {
 	if hand.IsTarget(uid) {
 		hand.out <- "# Disconnected the monitor target connected from " + hand.targets[uid].String() + "\n\n"
 
@@ -90,21 +90,21 @@ func (hand *MonitorHandler) CloseConn(uid int64) {
 }	
 
 // Timeout is called when a client is timed out
-func (hand *MonitorHandler) Timeout(uid int64) {
+func (hand *MonitorHandler) Timedout(uid int64) {
 	if hand.IsTarget(uid) {
 		hand.out <- "# The session timed out"
 	}
 }
 
 // BlockedAddress is called when a client is added blocked address
-func (hand *MonitorHandler) AddBlockedAddress(ip net.IP, reason string) {
+func (hand *MonitorHandler) AddedBlockedAddress(ip net.IP, reason string) {
 	if hand.IsTargetIP(ip) {
 		hand.out <- "# Added the target ip to blocked address"
 	}
 }
 
 // BlockedAddress is called when a client is removed blocked address
-func (hand *MonitorHandler) RemoveBlockedAddress(ip net.IP, reason string) {
+func (hand *MonitorHandler) RemovedBlockedAddress(ip net.IP, reason string) {
 	if hand.IsTargetIP(ip) {
 		hand.out <- "# Removed the target ip from blocked address"
 	}
