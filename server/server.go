@@ -649,6 +649,10 @@ func (ser *Server) AddBlockedAddress(ip net.IP, exp *Expire, reason string) {
 }
 
 func (ser *Server) RemoveBlockedAddress(ip net.IP) {
+	for _, handler := range ser.Handlers {
+		handler.RemovedBlockedAddress(ip)
+	}
+
 	ser.blockedAddresses.Remove(ip.String())
 }
 

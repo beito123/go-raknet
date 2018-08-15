@@ -46,7 +46,7 @@ type Handler interface {
 	AddedBlockedAddress(ip net.IP, reason string)
 
 	// RemovedBlockedAddress is called when a client is removed blocked address
-	RemovedBlockedAddress(ip net.IP, reason string)
+	RemovedBlockedAddress(ip net.IP)
 
 	// HandleSendPacket handles a packet sent from the server to a client
 	HandleSendPacket(addr net.Addr, pk raknet.Packet)
