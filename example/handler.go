@@ -87,7 +87,7 @@ func (hand *MonitorHandler) ClosedConn(uid int64) {
 
 		delete(hand.targets, uid)
 	}
-}	
+}
 
 // Timeout is called when a client is timed out
 func (hand *MonitorHandler) Timedout(uid int64) {
@@ -104,7 +104,7 @@ func (hand *MonitorHandler) AddedBlockedAddress(ip net.IP, reason string) {
 }
 
 // BlockedAddress is called when a client is removed blocked address
-func (hand *MonitorHandler) RemovedBlockedAddress(ip net.IP, reason string) {
+func (hand *MonitorHandler) RemovedBlockedAddress(ip net.IP) {
 	if hand.IsTargetIP(ip) {
 		hand.out <- "# Removed the target ip from blocked address"
 	}
@@ -154,7 +154,6 @@ func (hand *MonitorHandler) IsTargetAddr(addr net.Addr) bool {
 
 	return hand.IsTargetIP(naddr.IP)
 }
-
 
 func (hand *MonitorHandler) IsTargetIP(ip net.IP) bool {
 	return hand.MonitorIP.Equal(ip)
