@@ -183,7 +183,7 @@ func (session *Session) handlePacket(pk raknet.Packet, channel int) {
 		}
 
 		pong := &protocol.ConnectedPong{
-			Time: npk.Time,
+			Timestamp: npk.Timestamp,
 		}
 
 		err = pong.Encode()

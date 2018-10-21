@@ -16,7 +16,7 @@ import (
 
 type ConnectedPing struct {
 	BasePacket
-	Time int64
+	TimeStamp int64
 }
 
 func (pk ConnectedPing) ID() byte {
@@ -29,7 +29,7 @@ func (pk *ConnectedPing) Encode() error {
 		return err
 	}
 
-	err = pk.PutLong(pk.Time)
+	err = pk.PutLong(pk.TimeStamp)
 	if err != nil {
 		return err
 	}
@@ -43,7 +43,7 @@ func (pk *ConnectedPing) Decode() error {
 		return err
 	}
 
-	pk.Time, err = pk.Long()
+	pk.TimeStamp, err = pk.Long()
 	if err != nil {
 		return err
 	}
@@ -57,7 +57,7 @@ func (pk *ConnectedPing) New() raknet.Packet {
 
 type ConnectedPong struct {
 	BasePacket
-	Time int64
+	TimeStamp int64
 }
 
 func (pk ConnectedPong) ID() byte {
@@ -70,7 +70,7 @@ func (pk *ConnectedPong) Encode() error {
 		return err
 	}
 
-	err = pk.PutLong(pk.Time)
+	err = pk.PutLong(pk.TimeStamp)
 	if err != nil {
 		return err
 	}
@@ -84,7 +84,7 @@ func (pk *ConnectedPong) Decode() error {
 		return err
 	}
 
-	pk.Time, err = pk.Long()
+	pk.TimeStamp, err = pk.Long()
 	if err != nil {
 		return err
 	}
