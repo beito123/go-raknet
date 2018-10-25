@@ -17,7 +17,7 @@ const (
 	Version = "1.0.0"
 
 	// NetworkProtocol is a version of Raknet protocol
-	NetworkProtocol = 6
+	NetworkProtocol = 9
 
 	// MaxMTU is the maximum size of MTU
 	MaxMTU = 1492

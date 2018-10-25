@@ -26,18 +26,3 @@ func SplitBytesSlice(slice []byte, size int) [][]byte {
 
 	return chunks
 }
-
-// Strings is a simple sort type for []string
-type Strings []string
-
-func (s Strings) Len() int {
-	return len(s)
-}
-
-func (s Strings) Less(i, j int) bool {
-	return s[i] < s[j]
-}
-
-func (s Strings) Swap(i, j int) {
-	s[i], s[j] = s[j], s[i]
-}
