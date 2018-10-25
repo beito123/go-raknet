@@ -35,9 +35,8 @@ const (
 )
 
 var (
-	errAlreadyRunning           = errors.New("server has been already running")
+	errAlreadyRunning           = errors.New("already running")
 	errServerClosed             = errors.New("server closed")
-	errInvalidMaxAsyncTaskCount = errors.New("invalid max async task count")
 )
 
 type Handlers []Handler

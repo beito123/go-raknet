@@ -55,19 +55,40 @@ type Session struct {
 	// MTU is the max packet size to receive and send
 	MTU int
 
-	// LatencyEnabled enables measuring a latency time
-	LatencyEnabled bool
-
-	// LatencyID is a latency identifier
-	LatencyID int64
-
 	State SessionState
+
+	// connectedTime is the time completed connection with client
+	connectedTime time.Time
+
+	// latencyEnabled enables measuring a latency time
+	latencyEnabled bool
+
+	// latencyTimestamps is timestamps of pong packet sent from client
+	latencyTimestamps []int64
+
+	// totalLatency is the total latency time
+	totalLatency time.Duration
+
+	// latency is the average latency time
+	latency time.Duration
+
+	// lastLatency is the last latency time
+	lastLatency time.Duration
+
+	// lowestLatency is the lowest latency time
+	lowestLatency time.Duration
+
+	// highestLatency is the highest latency time
+	highestLatency time.Duration
+
+	// latencyPongReceivedCount is a counter of receiving pong packet
+	latencyPongReceivedCount int
 
 	// messageIndex is a message index of EncapsulatedPacket
 	messageIndex binary.Triad
 
 	// splitID is a handling split id
-	splitID int
+	splitID uint16
 
 	// reliablePackets contains handled reliable packets
 	reliablePackets map[binary.Triad]bool
@@ -137,9 +158,8 @@ type Session struct {
 	// LastPacketCounterResetTime is the last time reset packet counters
 	LastPacketCounterResetTime time.Time
 
-	// handshakeRecord is a records of a handshake packet
-	// It's used to detect whether the client is connected
-	handshakeRecord *raknet.Record
+	// LastPingSendTime is the last time sent a ping packet
+	LastPingSendTime time.Time
 }
 
 func (session *Session) SystemAddress() *raknet.SystemAddress {
@@ -169,6 +189,12 @@ func (session *Session) Init() {
 	session.LastPacketCounterResetTime = time.Now()
 }
 
+// Timestamp returns a time from a time connected
+// used for Ping and Pong packets
+func (session *Session) Timestamp() int64 {
+	return int64(time.Now().Sub(session.connectedTime))
+}
+
 func (session *Session) handlePacket(pk raknet.Packet, channel int) {
 	if session.State == StateDisconected {
 		return
@@ -183,7 +209,8 @@ func (session *Session) handlePacket(pk raknet.Packet, channel int) {
 		}
 
 		pong := &protocol.ConnectedPong{
-			Timestamp: npk.Timestamp,
+			Timestamp:     npk.Timestamp,
+			TimestampPong: session.Timestamp(),
 		}
 
 		err = pong.Encode()
@@ -203,8 +230,41 @@ func (session *Session) handlePacket(pk raknet.Packet, channel int) {
 			return
 		}
 
-		if session.LatencyEnabled {
-			// TODO: writes
+		if session.latencyEnabled {
+			unset := func(v []int64, i int) []int64 {
+				return append(v[:i], v[i+1:]...)
+			}
+
+			now := session.Timestamp()
+			for i, ts := range session.latencyTimestamps {
+				if ts == npk.Timestamp {
+					unset(session.latencyTimestamps, i)
+
+					raw := session.LastPacketReceiveTime.Sub(session.LastPingSendTime)
+
+					session.lastLatency = raw
+
+					if session.latencyPongReceivedCount == 0 { // first
+						session.lowestLatency = raw
+						session.highestLatency = raw
+					} else {
+						if raw < session.lowestLatency {
+							session.lowestLatency = raw
+						} else if raw < session.highestLatency {
+							session.highestLatency = raw
+						}
+					}
+
+					session.latencyPongReceivedCount++
+
+					session.totalLatency += raw
+					session.latency = (session.totalLatency / time.Duration(session.latencyPongReceivedCount))
+				} else {
+					if time.Duration(now-ts) >= raknet.SessionTimeout || len(session.latencyTimestamps) > 10 {
+						unset(session.latencyTimestamps, i)
+					}
+				}
+			}
 		}
 	case *protocol.ConnectionRequestAccepted:
 		if session.State != StateHandshaking {
@@ -225,12 +285,23 @@ func (session *Session) handlePacket(pk raknet.Packet, channel int) {
 			ServerTimestamp: npk.ClientTimestamp,
 		}
 
-		epk, err := session.SendPacket(hpk, raknet.ReliableOrderedWithACKReceipt, channel)
+		err = hpk.Encode()
 		if err != nil {
 			session.Server.CloseSession(session.Addr, "Failed to login")
+			return
 		}
 
-		session.handshakeRecord = epk.Record
+		_, err = session.SendPacket(hpk, raknet.ReliableOrderedWithACKReceipt, channel)
+		if err != nil {
+			session.Logger.Warn(err)
+		}
+
+		session.State = StateConnected
+		session.connectedTime = time.Now()
+
+		for _, handler := range session.Server.Handlers {
+			handler.OpenedConn(session.GUID, session.Addr)
+		}
 	case *protocol.DisconnectionNotification:
 		err := npk.Decode()
 		if err != nil {
@@ -310,17 +381,6 @@ func (session *Session) handleACKPacket(pk *protocol.Acknowledge) {
 			}
 
 			session.recoveryQueue.Remove(index)
-
-			if session.State != StateConnected && session.handshakeRecord != nil {
-				if record.Equals(session.handshakeRecord) {
-					session.State = StateConnected
-					session.Logger.Debug("Jagajaga")
-
-					for _, handler := range session.Server.Handlers {
-						handler.OpenedConn(session.GUID, session.Addr)
-					}
-				}
-			}
 		}
 	case protocol.TypeNACK:
 		for i := 0; i < len(pk.Records); i++ {
@@ -441,28 +501,14 @@ func (session *Session) addSendQueue(epk *protocol.EncapsulatedPacket) {
 	session.sendQueue.Add(epk)
 }
 
-func (session *Session) bumpMessageIndex() (r binary.Triad) {
-	r = session.messageIndex
-	session.messageIndex = session.messageIndex.Bump()
-	return
+func (session *Session) bumpOrderSendIndex(channel int) (index binary.Triad) {
+	index = session.orderSendIndex[channel]
+	return BumpTriad(&index)
 }
 
-func (session *Session) bumpOrderSendIndex(channel int) (r binary.Triad) {
-	r = session.orderSendIndex[channel]
-	session.orderSendIndex[channel] = session.orderSendIndex[channel].Bump()
-	return
-}
-
-func (session *Session) bumpSequenceSendIndex(channel int) (r binary.Triad) {
-	r = session.sequenceSendIndex[channel]
-	session.sequenceSendIndex[channel] = (session.sequenceSendIndex[channel]).Bump()
-	return
-}
-
-func (session *Session) bumpSplitID() (r uint16) {
-	r = uint16(session.splitID)
-	session.splitID = (session.splitID % 65536) + 1
-	return
+func (session *Session) bumpSequenceSendIndex(channel int) (index binary.Triad) {
+	index = session.sequenceSendIndex[channel]
+	return BumpTriad(&index)
 }
 
 func (session *Session) getRecoveryQueue(index int) ([]*protocol.EncapsulatedPacket, bool) {
@@ -531,7 +577,7 @@ func (session *Session) SendPacketBytes(b []byte, reliability raknet.Reliability
 	}
 
 	if reliability.IsReliable() {
-		epk.MessageIndex = session.bumpMessageIndex()
+		epk.MessageIndex = BumpTriad(&session.messageIndex)
 	}
 
 	if reliability.IsOrdered() || reliability.IsSequenced() {
@@ -545,7 +591,7 @@ func (session *Session) SendPacketBytes(b []byte, reliability raknet.Reliability
 	}
 
 	if needSplit(epk.Reliability, b, session.MTU) {
-		epk.SplitID = session.bumpSplitID()
+		epk.SplitID = BumpUInt16(&session.splitID)
 
 		for _, spk := range session.splitPacket(epk) {
 			session.addSendQueue(spk)
@@ -559,10 +605,8 @@ func (session *Session) SendPacketBytes(b []byte, reliability raknet.Reliability
 
 func (session *Session) SendCustomPacket(epks []*protocol.EncapsulatedPacket, updateRecoveryQueue bool) (int, error) {
 	cpk := protocol.NewCustomPacket(protocol.IDCustom4)
-	cpk.Index = session.sendSequenceNumber
+	cpk.Index = BumpTriad(&session.sendSequenceNumber)
 	cpk.Messages = epks
-
-	session.sendSequenceNumber = session.sendSequenceNumber.Bump()
 
 	err := cpk.Encode()
 	if err != nil {
@@ -601,7 +645,7 @@ func (session *Session) splitPacket(epk *protocol.EncapsulatedPacket) []*protoco
 		}
 
 		if epk.Reliability.IsReliable() {
-			npk.MessageIndex = session.bumpMessageIndex()
+			npk.MessageIndex = BumpTriad(&session.messageIndex)
 		} else {
 			npk.MessageIndex = epk.MessageIndex
 		}
@@ -688,8 +732,21 @@ func (session *Session) update() bool {
 	}
 
 	// Send ping to detect latency if it is enabled
-	if session.LatencyEnabled {
-		//TODO: write
+	if session.latencyEnabled && current.Sub(session.LastPingSendTime) >= raknet.PingSendInterval &&
+		session.State == StateConnected {
+		ping := &protocol.ConnectedPing{
+			Timestamp: session.Timestamp(),
+		}
+
+		err := ping.Encode()
+		if err != nil {
+			session.Logger.Warn(err)
+		} else {
+			session.SendPacket(ping, raknet.Unreliable, raknet.DefaultChannel)
+			session.LastPingSendTime = current
+			session.latencyTimestamps = append(session.latencyTimestamps, ping.Timestamp)
+		}
+
 	}
 
 	if current.Sub(session.LastPacketReceiveTime) >= raknet.DetectionSendInterval &&
