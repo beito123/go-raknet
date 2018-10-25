@@ -184,7 +184,7 @@ func (q *Queue) IsEmpty() bool {
 }
 
 func (q *Queue) Size() int {
-	return q.Size()
+	return q.Map.Len()
 }
 
 func (q *Queue) Remove() {
