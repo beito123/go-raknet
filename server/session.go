@@ -66,23 +66,8 @@ type Session struct {
 	// latencyTimestamps is timestamps of pong packet sent from client
 	latencyTimestamps []int64
 
-	// totalLatency is the total latency time
-	totalLatency time.Duration
-
-	// latency is the average latency time
-	latency time.Duration
-
-	// lastLatency is the last latency time
-	lastLatency time.Duration
-
-	// lowestLatency is the lowest latency time
-	lowestLatency time.Duration
-
-	// highestLatency is the highest latency time
-	highestLatency time.Duration
-
-	// latencyPongReceivedCount is a counter of receiving pong packet
-	latencyPongReceivedCount int
+	// Latency is the average latency time data
+	Latency *raknet.Latency
 
 	// messageIndex is a message index of EncapsulatedPacket
 	messageIndex binary.Triad
@@ -167,6 +152,8 @@ func (session *Session) SystemAddress() *raknet.SystemAddress {
 }
 
 func (session *Session) Init() {
+	session.Latency = new(raknet.Latency)
+
 	session.reliablePackets = make(map[binary.Triad]bool)
 	session.splitQueue = make(map[uint16]*SplitPacket)
 
@@ -240,25 +227,7 @@ func (session *Session) handlePacket(pk raknet.Packet, channel int) {
 				if ts == npk.Timestamp {
 					unset(session.latencyTimestamps, i)
 
-					raw := session.LastPacketReceiveTime.Sub(session.LastPingSendTime)
-
-					session.lastLatency = raw
-
-					if session.latencyPongReceivedCount == 0 { // first
-						session.lowestLatency = raw
-						session.highestLatency = raw
-					} else {
-						if raw < session.lowestLatency {
-							session.lowestLatency = raw
-						} else if raw < session.highestLatency {
-							session.highestLatency = raw
-						}
-					}
-
-					session.latencyPongReceivedCount++
-
-					session.totalLatency += raw
-					session.latency = (session.totalLatency / time.Duration(session.latencyPongReceivedCount))
+					session.Latency.AddRaw(session.LastPacketReceiveTime.Sub(session.LastPingSendTime))
 				} else {
 					if time.Duration(now-ts) >= raknet.SessionTimeout || len(session.latencyTimestamps) > 10 {
 						unset(session.latencyTimestamps, i)

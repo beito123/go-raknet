@@ -12,6 +12,7 @@ package raknet
 import (
 	"net"
 	"strconv"
+	"time"
 
 	"github.com/satori/go.uuid"
 )
@@ -241,4 +242,47 @@ func (record *Record) Numbers() []int {
 	}
 
 	return numbers
+}
+
+/*
+	Latency
+*/
+
+type Latency struct {
+	// totalLatency is the total latency time
+	TotalLatency time.Duration
+
+	// latency is the average latency time
+	Latency time.Duration
+
+	// lastLatency is the last latency time
+	LastLatency time.Duration
+
+	// lowestLatency is the lowest latency time
+	LowestLatency time.Duration
+
+	// highestLatency is the highest latency time
+	HighestLatency time.Duration
+
+	counter int
+}
+
+func (lat *Latency) AddRaw(raw time.Duration) {
+	lat.LastLatency = raw
+
+	if lat.counter == 0 { //first
+		lat.LowestLatency = raw
+		lat.HighestLatency = raw
+	} else {
+		if raw < lat.LowestLatency {
+			lat.LowestLatency = raw
+		} else if raw < lat.HighestLatency {
+			lat.HighestLatency = raw
+		}
+	}
+
+	lat.counter++
+
+	lat.TotalLatency += raw
+	lat.Latency = time.Duration(int64(lat.TotalLatency) / int64(lat.counter))
 }
