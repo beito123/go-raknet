@@ -1,6 +1,6 @@
 # go-raknet
 
-go-raknet is Raknet library written in Go. (supported a server only for now)
+go-raknet is Raknet library written in Go. (developing a server only for now)
 
 Most of the codes are based on [JRaknet](https://github.com/JRakNet/JRakNet) (by [JRaknet-Team](https://github.com/JRakNet) and [Whirvis](https://github.com/Whirvis)).
 
