@@ -109,11 +109,10 @@ func (pk *ConnectedPong) New() raknet.Packet {
 
 type UnconnectedPing struct {
 	BasePacket
-	Timestamp       int64
-	Magic           bool
-	PingID          int64
-	ConnectionMagic []byte
-	Connection      *raknet.ConnectionType
+	Timestamp  int64
+	Magic      bool
+	PingID     int64
+	Connection *raknet.ConnectionType
 }
 
 func (pk UnconnectedPing) ID() byte {
@@ -137,11 +136,6 @@ func (pk *UnconnectedPing) Encode() error {
 	}
 
 	err = pk.PutLong(pk.PingID)
-	if err != nil {
-		return err
-	}
-
-	err = pk.Put(raknet.ConnctionTypeMagic)
 	if err != nil {
 		return err
 	}
@@ -172,14 +166,6 @@ func (pk *UnconnectedPing) Decode() error {
 		return err
 	}
 
-	if pk.Len() < len(raknet.ConnctionTypeMagic) {
-		pk.Connection = &raknet.ConnectionVanilla
-
-		return nil
-	}
-
-	pk.ConnectionMagic = pk.Get(len(raknet.ConnctionTypeMagic))
-
 	pk.Connection, err = pk.ConnectionType()
 	if err != nil {
 		return err
@@ -206,12 +192,11 @@ func (pk *UnconnectedPingOpenConnections) New() raknet.Packet {
 
 type UnconnectedPong struct {
 	BasePacket
-	Timestamp       int64
-	PongID          int64
-	Magic           bool
-	Identifier      identifier.Identifier
-	ConnectionMagic []byte
-	Connection      *raknet.ConnectionType
+	Timestamp  int64
+	PongID     int64
+	Magic      bool
+	Identifier identifier.Identifier
+	Connection *raknet.ConnectionType
 }
 
 func (pk UnconnectedPong) ID() byte {
@@ -240,11 +225,6 @@ func (pk *UnconnectedPong) Encode() error {
 	}
 
 	err = pk.PutString(pk.Identifier.Build())
-	if err != nil {
-		return err
-	}
-
-	err = pk.Put(raknet.ConnctionTypeMagic)
 	if err != nil {
 		return err
 	}
@@ -280,15 +260,9 @@ func (pk *UnconnectedPong) Decode() error {
 		return err
 	}
 
-	if pk.Len() >= len(raknet.ConnctionTypeMagic) {
-		pk.ConnectionMagic = pk.Get(len(raknet.ConnctionTypeMagic))
-
-		pk.Connection, err = pk.ConnectionType()
-		if err != nil {
-			return err
-		}
-	} else {
-		pk.Connection = &raknet.ConnectionVanilla
+	pk.Connection, err = pk.ConnectionType()
+	if err != nil {
+		return err
 	}
 
 	pk.Identifier = identifier.Base{

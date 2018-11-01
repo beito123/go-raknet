@@ -29,17 +29,17 @@ type Metadata map[string]string
 var ConnctionTypeMagic = []byte{0x03, 0x08, 0x05, 0x0b, 0x43, 0x54, 0x49}
 
 // ConnectionVanilla is a connection from a vanilla client or an unknown implementation
-var ConnectionVanilla = ConnectionType{
+var ConnectionVanilla = &ConnectionType{
 	Name:      "Vanilla",
 	IsVanilla: true,
 }
 
 // ConnectionGoRaknet is a connection from go-raknet.
-var ConnectionGoRaknet = ConnectionType{
+var ConnectionGoRaknet = &ConnectionType{
 	UUID:    uuid.FromStringOrNil("495248b9-d485-4389-acd0-175fdb2233cf"),
 	Name:    "GoRaknet",
 	Lang:    "Go",
-	Version: "2.9.2",
+	Version: "1.0.0",
 }
 
 // ConnectionType used to signify which implementation of the Raknet protocol

@@ -166,15 +166,8 @@ func (rs *RaknetStream) PutAddressSystemAddress(addr *raknet.SystemAddress) erro
 }
 
 // UUID reads UUID
-func (rs *RaknetStream) UUID(uid *uuid.UUID) error {
-	u, err := uuid.FromBytes(rs.Get(16))
-	if err != nil {
-		return err
-	}
-
-	*uid = u
-
-	return nil
+func (rs *RaknetStream) UUID() (uuid.UUID, error) {
+	return uuid.FromBytes(rs.Get(16))
 }
 
 // PutUUID writes UUID
@@ -184,24 +177,36 @@ func (rs *RaknetStream) PutUUID(uid uuid.UUID) error {
 
 // ConnectionType reads ConnectionType
 func (rs *RaknetStream) ConnectionType() (*raknet.ConnectionType, error) {
-	var ntyp raknet.ConnectionType
+	magicLen := len(raknet.ConnctionTypeMagic)
 
-	err := rs.UUID(&ntyp.UUID)
+	if rs.Len() < magicLen {
+		return raknet.ConnectionVanilla, nil
+	}
+
+	if !bytes.Equal(rs.Get(magicLen), raknet.ConnctionTypeMagic) {
+		return raknet.ConnectionVanilla, nil
+	}
+
+	var err error
+
+	ct := new(raknet.ConnectionType)
+
+	ct.UUID, err = rs.UUID()
 	if err != nil {
 		return nil, err
 	}
 
-	ntyp.Name, err = rs.String()
+	ct.Name, err = rs.String()
 	if err != nil {
 		return nil, err
 	}
 
-	ntyp.Lang, err = rs.String()
+	ct.Lang, err = rs.String()
 	if err != nil {
 		return nil, err
 	}
 
-	ntyp.Version, err = rs.String()
+	ct.Version, err = rs.String()
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +216,7 @@ func (rs *RaknetStream) ConnectionType() (*raknet.ConnectionType, error) {
 		return nil, err
 	}
 
-	ntyp.Metadata = raknet.Metadata{}
+	ct.Metadata = raknet.Metadata{}
 
 	for i := byte(0); i < metaLen; i++ {
 		key, err := rs.String()
@@ -224,49 +229,54 @@ func (rs *RaknetStream) ConnectionType() (*raknet.ConnectionType, error) {
 			return nil, err
 		}
 
-		_, ok := ntyp.Metadata[key]
+		_, ok := ct.Metadata[key]
 		if ok { // if exists already
 			return nil, errors.New("duplicate key")
 		}
 
-		ntyp.Metadata[key] = value
+		ct.Metadata[key] = value
 	}
 
-	return nil, nil
+	return ct, nil
 }
 
 // PutConnectionType writes ConnectionType
-func (rs *RaknetStream) PutConnectionType(typ *raknet.ConnectionType) error {
-	err := rs.PutUUID(typ.UUID)
+func (rs *RaknetStream) PutConnectionType(ct *raknet.ConnectionType) error {
+	err := rs.Put(raknet.ConnctionTypeMagic)
 	if err != nil {
 		return err
 	}
 
-	err = rs.PutString(typ.Name)
+	err = rs.PutUUID(ct.UUID)
 	if err != nil {
 		return err
 	}
 
-	err = rs.PutString(typ.Lang)
+	err = rs.PutString(ct.Name)
 	if err != nil {
 		return err
 	}
 
-	err = rs.PutString(typ.Version)
+	err = rs.PutString(ct.Lang)
 	if err != nil {
 		return err
 	}
 
-	if len(typ.Metadata) > raknet.MaxMetadataValues {
+	err = rs.PutString(ct.Version)
+	if err != nil {
+		return err
+	}
+
+	if len(ct.Metadata) > raknet.MaxMetadataValues {
 		return errors.New("too many metadata values")
 	}
 
-	err = rs.PutByte(byte(len(typ.Metadata)))
+	err = rs.PutByte(byte(len(ct.Metadata)))
 	if err != nil {
 		return err
 	}
 
-	for k, v := range typ.Metadata {
+	for k, v := range ct.Metadata {
 		err = rs.PutString(k)
 		if err != nil {
 			return err

@@ -8,6 +8,9 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/beito123/go-raknet/protocol"
+	"github.com/davecgh/go-spew/spew"
+
 	raknet "github.com/beito123/go-raknet"
 )
 
@@ -15,6 +18,7 @@ import (
 type MonitorHandler struct {
 	MonitorIP net.IP
 	Path      string
+	proto     *protocol.Protocol
 	out       chan string
 	stopped   chan bool
 	number    int
@@ -33,6 +37,9 @@ func (hand *MonitorHandler) StartServer() {
 	hand.stopped = make(chan bool)
 
 	hand.out = make(chan string, 10)
+
+	hand.proto = &protocol.Protocol{}
+	hand.proto.RegisterPackets()
 
 	go func() {
 		defer file.Close()
@@ -112,16 +119,21 @@ func (hand *MonitorHandler) RemovedBlockedAddress(ip net.IP) {
 
 func (hand *MonitorHandler) HandleSendPacket(addr net.Addr, pk raknet.Packet) {
 	if hand.IsTargetAddr(addr) {
+		npk := hand.cloneRawPacket(pk)
 		hand.out <- "HandleSendPacket: \n"
-		hand.out <- hand.dump("Server", "Client", getPacketName(pk), pk.Bytes())
+		hand.out <- hand.dump("Server", "Client", getPacketName(npk), npk.Bytes())
+		hand.out <- fmt.Sprintf("Parsed:\n%s\n\n", hand.dumpPacket(npk))
 	}
 }
 
 // HandleRawPacket handles a raw packet no processed in Raknet server
 func (hand *MonitorHandler) HandleRawPacket(addr net.Addr, pk raknet.Packet) {
 	if hand.IsTargetAddr(addr) {
+		npk := hand.clonePacket(pk, nil)
+
 		hand.out <- "HandleRawPacket: \n"
-		hand.out <- hand.dump("Client", "Server", getPacketName(pk), pk.Bytes())
+		hand.out <- hand.dump("Client", "Server", getPacketName(npk), npk.Bytes())
+		hand.out <- fmt.Sprintf("Parsed:\n%s\n\n", hand.dumpPacket(npk))
 	}
 }
 
@@ -176,5 +188,36 @@ func getTypeName(v interface{}) string {
 func (hand *MonitorHandler) dump(from string, to string, name string, bytes []byte) string {
 	// #1 [Client -> Server] UnknownPacket (0xff)
 	hand.number++
-	return fmt.Sprintf("#%d [%s -> %s] %s \n%s\n\n", hand.number, from, to, name, hex.Dump(bytes))
+	return fmt.Sprintf("#%d [%s -> %s] %s \n%s\n", hand.number, from, to, name, hex.Dump(bytes))
+}
+
+func (hand *MonitorHandler) cloneRawPacket(pk raknet.Packet) raknet.Packet {
+	// Get a packet by id
+	npk, ok := hand.proto.Packet(pk.ID())
+	if !ok {
+		npk = nil
+	}
+
+	return hand.clonePacket(pk, npk)
+}
+
+func (hand *MonitorHandler) clonePacket(pk raknet.Packet, npk raknet.Packet) raknet.Packet {
+	if npk == nil {
+		npk = pk.New()
+	}
+
+	npk.SetBytes(pk.Bytes())
+
+	return npk
+}
+
+func (hand *MonitorHandler) dumpPacket(pk raknet.Packet) string {
+	err := pk.Decode()
+	if err != nil {
+		return "error :" + err.Error()
+	}
+
+	pk.SetBytes([]byte{}) // clear
+
+	return spew.Sdump(pk)
 }

@@ -20,13 +20,15 @@ import (
 func main() {
 	var (
 		port          int
+		proto         int
 		maxConnection int
 		monitor       string
 		help          bool
 	)
 
-	//Command: goraknet -p <server port> -m <max connections> -M <ip addr>
+	//Command: goraknet -p <server port> -P <mcpe protocol> -m <max connections> -M <ip addr>
 	flag.IntVar(&port, "p", 19132, "a server port")
+	flag.IntVar(&proto, "P", 291, "mcpe protocol number") // mcpe v1. proto:291
 	flag.IntVar(&maxConnection, "m", 10, "max connections")
 	flag.StringVar(&monitor, "M", "", "monitor ip")
 	flag.BoolVar(&help, "help", false, "help")
@@ -45,8 +47,9 @@ func main() {
 	if help {
 		logger.Info("Usage: goraknet -p <a server port> -m <max connections> -M <ip addr>")
 		logger.Info("-p: set server's port. (default: 19132)")
+		logger.Info("-P: set mcbe protocol number")
 		logger.Info("-m: set server's max connections. (default: 10)")
-		logger.Info("-M: set server's IP address.")
+		logger.Info("-M: set server's IP address")
 		return
 	}
 
@@ -59,9 +62,9 @@ func main() {
 
 	// For MCBE server
 	id := identifier.Minecraft{
-		Connection:        &raknet.ConnectionGoRaknet,
+		Connection:        raknet.ConnectionGoRaknet,
 		ServerName:        "Go-Raknet server",
-		ServerProtocol:    280,
+		ServerProtocol:    proto,
 		VersionTag:        "1.0.0",
 		OnlinePlayerCount: 0,
 		MaxPlayerCount:    maxConnection,

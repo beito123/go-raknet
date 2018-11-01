@@ -51,8 +51,11 @@ func (protocol *Protocol) RegisterPackets() {
 
 func (protocol *Protocol) Packet(id byte) (pk raknet.Packet, ok bool) {
 	pk = protocol.packets[id]
+	if pk == nil {
+		return nil, false
+	}
 
-	return pk, pk != nil
+	return pk.New(), true
 }
 
 func (protocol *Protocol) Packets() []raknet.Packet {
